@@ -10,6 +10,8 @@ Dự án do [ThanhTris](https://github.com/ThanhTris/codex-startup-animation) ph
 | --- | --- |
 | Thư viện ảnh cá nhân | Thêm PNG, JPEG, WebP hoặc GIF bằng nút chọn tệp, kéo thả hoặc chép vào thư mục riêng. |
 | Phân loại ảnh | Lọc **Tất cả**, **Ảnh tĩnh** và **GIF**; có nút mở từng thư mục. |
+| Xóa và hoàn tác | Nút thùng rác trên từng ảnh/GIF/video, kể cả tệp lỗi. Xóa hình đang dùng sẽ tắt hình nền; có thể hoàn tác sau khi mở lại thư viện. |
+| Báo tệp trùng khi thêm | So sánh nội dung SHA-256, kể cả khác tên. Chọn **Bỏ qua tệp này** hoặc **Vẫn lưu bản sao**. |
 | Xem trước giao diện | Mô phỏng lớp ảnh phủ lên Codex trước khi áp dụng. |
 | Căn và cắt vùng hiển thị | Kéo ảnh, phóng/thu 25–400%, chọn phủ kín khung hoặc hiện toàn bộ ảnh; giữ nguyên ảnh/GIF gốc. |
 | Chỉnh độ đậm nhạt | Điều chỉnh từ 0–75%, có mức chọn nhanh 15%, 25% và 35%. |
@@ -52,6 +54,10 @@ Kho mã nguồn chứa mã để tự biên dịch; không cần sử dụng ả
 
 Nút **Mở Codex** trong thư viện chỉ giúp mở ứng dụng gốc cho tiện kiểm tra. Bạn không phải bấm nút này mỗi lần sử dụng. Nút **Khôi phục giao diện gốc** tắt hình nền mà không xóa thư viện.
 
+Mỗi thẻ có **nút thùng rác** ở góc phải để xóa khỏi thư viện, kể cả tệp bị hỏng hoặc không tạo được ảnh xem trước. App hỏi lại trước khi xóa; xóa hình nền đang dùng sẽ tắt hình đó trên Codex. **Hoàn tác xóa gần nhất** đưa tệp trở lại, không ghi đè tệp cùng tên và không tự bật lại hình nền. Có thể hoàn tác lần lượt các tệp đã xóa, kể cả sau khi khởi động lại thư viện. Tệp được giữ trong `trash` trên máy, chưa tự dọn vĩnh viễn.
+
+Khi thêm tệp bằng nút chọn hoặc kéo thả, nếu nội dung giống hệt tệp đã có, app hiện tên bản trùng để bạn chọn **Bỏ qua tệp này** hoặc **Vẫn lưu bản sao**. Bản sao được đặt tên riêng, không ghi đè bản cũ. Kiểm tra áp dụng cho ảnh, GIF và video; đây là so sánh tệp giống hệt, không nhận diện hai hình nhìn tương tự hoặc đã nén lại. Tệp chép trực tiếp bằng Explorer vẫn được liệt kê, không tự bị xóa.
+
 Muốn chọn vùng ảnh, bấm **Căn / cắt ảnh** dưới phần xem trước. Kéo ảnh trong khung, chỉnh độ phóng hoặc vị trí ngang/dọc; chọn **Phủ kín khung** để lấp đầy hoặc **Hiện toàn bộ ảnh** để tránh mất nội dung. Có khung xem thử theo màn hình, 16:9, 16:10, 21:9 và 4:3. Bấm **Xong** rồi **Áp dụng hình nền** để lưu. Khung xem thử không đổi kích thước Codex: khi cửa sổ thay đổi, chương trình giữ cách căn và độ phóng theo tỷ lệ. Vùng trống khi thu nhỏ dùng nền tối. Với GIF, phần căn ảnh dùng ảnh tĩnh để dễ chỉnh; GIF vẫn chuyển động khi áp dụng.
 
 ## Thư mục dữ liệu
@@ -62,6 +68,7 @@ Muốn chọn vùng ảnh, bấm **Căn / cắt ảnh** dưới phần xem trư�
 | `%USERPROFILE%\CodexWallpaper\gifs` | GIF gốc, giữ nguyên dữ liệu động khi áp dụng. |
 | `%USERPROFILE%\CodexWallpaper\videos` | Video gốc; phát lặp vô hạn, không âm thanh. |
 | `%USERPROFILE%\CodexWallpaper\video-cache` | Ảnh xem trước và thông tin video; không chứa bản GIF chuyển đổi. |
+| `%USERPROFILE%\CodexWallpaper\trash` | Tệp đã xóa khỏi thư viện và thông tin để hoàn tác. Vẫn chiếm dung lượng cho đến khi được dọn thủ công. |
 | `%USERPROFILE%\CodexWallpaper\settings.json` | Lựa chọn hình nền, độ hiện và trạng thái tạm dừng. |
 | `%USERPROFILE%\CodexWallpaper\app` | Mã chương trình và bộ nạp đã biên dịch trên máy. |
 

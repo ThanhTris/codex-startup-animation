@@ -27,6 +27,12 @@ Nút **Mở Codex** kích hoạt ứng dụng chính thức, không cần đóng
 
 ## Thư viện và dữ liệu
 
+**Xóa tệp:** bấm nút thùng rác trên thẻ ảnh/GIF/video rồi xác nhận **Xóa khỏi thư viện**. Tệp lỗi vẫn có thẻ riêng để xóa; ảnh thu nhỏ không đọc được sẽ hiện ô báo lỗi thay vì làm tràn tên tệp. Nếu tệp đang là hình nền, app tắt hình nền đó trước khi chuyển tệp vào `trash`. Nếu Windows tạm khóa tệp, app thử lại; nếu không chuyển được, giữ lại cấu hình hình nền trước đó.
+
+**Hoàn tác:** nút **Hoàn tác xóa gần nhất** khôi phục từng tệp theo thứ tự xóa gần nhất, kể cả sau khi mở lại thư viện. Nếu tên cũ đã có tệp mới, tệp khôi phục nhận tên có hậu tố. Muốn dùng lại làm hình nền, chọn rồi **Áp dụng**. Thư mục `%USERPROFILE%\CodexWallpaper\trash` giữ bản gốc cùng `entry.json`; chưa có tự dọn vĩnh viễn nên các tệp này vẫn chiếm dung lượng.
+
+**Kiểm tra trùng:** khi thêm hoặc kéo thả tệp, máy chủ so sánh kích thước rồi SHA-256 với các tệp trong ba thư mục ảnh/GIF/video, kể cả khác tên. Nếu trùng nội dung, hộp thoại cho chọn **Bỏ qua tệp này** hoặc **Vẫn lưu bản sao**. Lựa chọn áp dụng riêng cho từng tệp trong lượt thêm; tệp lỗi được báo và các tệp tiếp theo vẫn được xử lý. Ảnh nhìn giống nhau nhưng khác dữ liệu không bị coi là trùng; tệp chép qua Explorer không bị tự loại bỏ.
+
 Bấm **Căn / cắt ảnh** dưới phần xem trước để chọn vùng hiển thị. Kéo để dời ảnh hoặc dùng thanh **Vị trí ngang/dọc**; chỉnh **Phóng to / thu nhỏ** từ 25–400%. **Phủ kín khung** lấp đầy cửa sổ, **Hiện toàn bộ ảnh** giữ đủ nội dung (có thể có vùng nền tối); **Đặt lại** trở về cách căn giữa mặc định. Thử khung theo màn hình, 16:9, 16:10, 21:9 hoặc 4:3 rồi bấm **Xong → Áp dụng hình nền**.
 
 Cách căn được lưu trong `settings.json` và giữ sau khi mở lại. Ảnh/GIF gốc không bị cắt hoặc ghi đè. Khung chỉ mô phỏng tỷ lệ: bộ nạp vẫn theo kích thước cửa sổ Codex thật và giữ vị trí/độ phóng tương đối khi đổi kích thước. Cấu hình cũ chưa có cách căn tiếp tục dùng chế độ phủ kín, căn giữa như trước.
@@ -109,7 +115,7 @@ Xem `overlay-state.json` và `overlay.log` khi cần kiểm tra sâu hơn. Kiể
 ## Kiểm thử
 
 ```powershell
-node --test tools/extension.test.mjs tools/windows-wallpaper.test.mjs
+node --test tools/extension.test.mjs tools/windows-wallpaper.test.mjs tools/windows-video.test.mjs tools/windows-library.test.mjs
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tools\windows-overlay.test.ps1
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tools\windows-launcher.test.ps1
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tools\windows-taskbar.test.ps1

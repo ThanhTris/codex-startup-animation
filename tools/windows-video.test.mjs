@@ -20,7 +20,9 @@ test('video uploads retain originals, range streaming, poster, crop and pause su
     const upload=await fetch(url.origin+'/api/import-video',{method:'POST',headers:{...headers,'X-File-Name':'my%20loop.mp4'},body:bytes});assert.equal(upload.status,201,await upload.clone().text());
     const imported=await upload.json();assert.equal(imported.kind,'video');assert.equal(imported.name,'my loop.mp4');
     assert.deepEqual(await readFile(join(root,'videos',imported.name)),bytes);
-    const listed=await(await fetch(url.origin+'/api/images',{headers})).json(),video=listed.images[0];
+    const duplicate=await fetch(url.origin+'/api/import-video',{method:'POST',headers:{...headers,'X-File-Name':'renamed.mp4'},body:bytes});assert.equal(duplicate.status,409);assert.equal((await duplicate.json()).code,'DUPLICATE_MEDIA');
+    const kept=await fetch(url.origin+'/api/import-video',{method:'POST',headers:{...headers,'X-File-Name':'renamed.mp4','X-Keep-Duplicate':'true'},body:bytes});assert.equal(kept.status,201);
+    const listed=await(await fetch(url.origin+'/api/images',{headers})).json(),video=listed.images.find(item=>item.name===imported.name);
     assert.equal(video.kind,'video');assert.equal(video.renderWidth,96);assert.equal(video.renderHeight,64);assert.ok(video.duration>0);
     const poster=await fetch(url.origin+video.poster,{headers});assert.equal(poster.status,200);assert.match(poster.headers.get('content-type'),/image\/jpeg/);
     const part=await fetch(url.origin+video.url,{headers:{...headers,Range:'bytes=10-29'}});assert.equal(part.status,206);assert.equal(part.headers.get('content-range'),`bytes 10-29/${bytes.length}`);assert.deepEqual(Buffer.from(await part.arrayBuffer()),bytes.subarray(10,30));
@@ -32,6 +34,9 @@ test('video uploads retain originals, range streaming, poster, crop and pause su
     const settings=await(await fetch(url.origin+'/api/settings',{headers})).json();assert.equal(settings.kind,'video');assert.equal(settings.paused,true);assert.deepEqual(settings.crop,crop);
     const bad=await fetch(url.origin+'/api/import-video',{method:'POST',headers:{...headers,'X-File-Name':'broken.mp4'},body:Buffer.alloc(24)});assert.equal(bad.status,400);
     assert.ok(!(await readdir(join(root,'videos'))).some(name=>name.startsWith('.upload-')));
+    const deleted=await fetch(url.origin+'/api/delete',{method:'POST',headers:{...headers,'Content-Type':'application/json'},body:JSON.stringify({kind:'video',name:video.name})});assert.equal(deleted.status,200);const deletion=(await deleted.json()).deleted;assert.equal(deletion.active,true);
+    assert.equal(JSON.parse(await readFile(join(root,'settings.json'),'utf8')).enabled,false);
+    assert.equal((await fetch(url.origin+'/api/undo-delete',{method:'POST',headers:{...headers,'Content-Type':'application/json'},body:JSON.stringify({id:deletion.id})})).status,200);
     await fetch(url.origin+'/api/restore',{method:'POST',headers});assert.deepEqual(await readFile(join(root,'videos',video.name)),bytes);
   }finally{if(active)await new Promise(resolve=>active.server.close(resolve));await rm(root,{recursive:true,force:true});}
 });

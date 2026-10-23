@@ -17,6 +17,7 @@
     <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14m-6-6 6 6-6 6"/></symbol>
     <symbol id="i-play" viewBox="0 0 24 24"><path d="m8 4 12 8-12 8Z"/></symbol>
     <symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M6 18 18 6"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7m4-7v7"/></symbol>
   </defs></svg>
   <div class="app-shell">
     <header class="app-header">
@@ -31,6 +32,7 @@
           <div class="filters" role="group" aria-label="Lọc loại hình nền"><button data-filter="all" class="filter active" aria-pressed="true">Tất cả <span id="all-count">0</span></button><button data-filter="image" class="filter" aria-pressed="false">Ảnh tĩnh <span id="image-count">0</span></button><button data-filter="gif" class="filter" aria-pressed="false">GIF <span id="gif-count">0</span></button><button data-filter="video" class="filter" aria-pressed="false">Video <span id="video-count">0</span></button></div>
           <label class="upload-zone" id="dropzone"><span class="upload-icon"><svg><use href="#i-upload"/></svg></span><strong>Thêm ảnh / GIF / video</strong><span>Kéo thả vào đây, hoặc bấm để chọn</span><small>Ảnh/GIF: 30 MB · Video: 200 MB</small><input id="files" type="file" accept="image/png,image/jpeg,image/webp,image/gif,video/mp4,video/webm,video/quicktime,.m4v" multiple></label>
           <div class="folder-actions"><button id="folder" class="text-button"><svg><use href="#i-folder"/></svg>Thư mục ảnh</button><button id="gif-folder" class="text-button"><svg><use href="#i-folder"/></svg>Thư mục GIF</button><button id="video-folder" class="text-button"><svg><use href="#i-folder"/></svg>Video</button></div>
+          <button id="undo-delete" class="text-button library-undo" type="button" hidden>↶ Hoàn tác xóa gần nhất</button>
           <div class="library-caption"><span id="count">Đang tải…</span><span>Chọn để xem trước</span></div>
           <div id="gallery" class="gallery" aria-label="Danh sách hình nền"></div>
           <div id="empty" class="empty-state" hidden><svg><use href="#i-image"/></svg><strong id="empty-title">Thư viện đang trống</strong><p id="empty-description">Thêm một hình ảnh để bắt đầu.</p><button id="empty-folder" class="button secondary">Mở thư mục GIF</button></div>
@@ -71,6 +73,9 @@
       <p>Khung là bản xem thử. Khi đổi kích thước cửa sổ Codex, vùng hiển thị được căn lại theo vị trí và độ phóng đã chọn. Bấm <b>Xong</b>, rồi <b>Áp dụng hình nền</b> để lưu.</p>
     </div>
   </dialog>
-  <template id="card-template"><button class="card" type="button" aria-pressed="false"><span class="card-art"><img alt="" loading="lazy"><span class="type-badge">GIF</span><span class="card-check"><svg><use href="#i-check"/></svg></span></span><span class="name"></span><span class="card-meta"><small class="size"></small><small class="saved-label"></small></span></button></template>
+  <dialog id="choice-dialog" class="choice-dialog" aria-labelledby="choice-title" aria-describedby="choice-description">
+    <form method="dialog"><span id="choice-icon" class="choice-icon"><svg><use href="#i-image"/></svg></span><h2 id="choice-title"></h2><p id="choice-description"></p><div id="choice-details" class="choice-details"></div><div class="choice-actions"><button class="button ghost" id="choice-cancel" value="cancel" autofocus>Bỏ qua tệp này</button><button class="button primary" id="choice-confirm" value="confirm">Vẫn lưu bản sao</button></div></form>
+  </dialog>
+  <template id="card-template"><div class="card-item"><button class="card" type="button" aria-pressed="false"><span class="card-art"><img alt="" loading="lazy"><span class="thumbnail-error" hidden><svg><use href="#i-image"/></svg><span>Không đọc được tệp</span></span><span class="type-badge">GIF</span><span class="card-check"><svg><use href="#i-check"/></svg></span></span><span class="name"></span><span class="card-meta"><small class="size"></small><small class="saved-label"></small></span></button><button class="delete-media icon-button" type="button"><svg><use href="#i-trash"/></svg></button></div></template>
 </body>
 </html>

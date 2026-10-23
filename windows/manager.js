@@ -4,13 +4,13 @@ const {normalizeCrop,cropRect}=await import('/crop.mjs?token='+token);
 const $=selector=>document.querySelector(selector);
 const gallery=$('#gallery'),applyButton=$('#apply'),strength=$('#strength'),preview=$('#preview'),previewImage=$('#preview-image');
 const previewVideo=$('#preview-video');
-let images=[],selected='',filter='all',saved={},paused=false,busy=false,toastTimer,signature='',previewKey='',loadVersion=0,pendingLoads=0;
+let images=[],broken=[],selected='',filter='all',saved={},paused=false,busy=false,toastTimer,signature='',previewKey='',loadVersion=0,pendingLoads=0,lastDeletion='';
 const posters=new Map();
 const cropDrafts=new Map();let crop=normalizeCrop(),cropSelection='';
 async function api(path,options={}){
   const response=await fetch(path,{signal:AbortSignal.timeout(30000),...options,headers:{Authorization:`Bearer ${token}`,...options.headers}});
   const value=await response.json().catch(()=>({error:'Phản hồi không hợp lệ.'}));
-  if(!response.ok)throw new Error(value.error||'Không thể kết nối thư viện.');return value;
+  if(!response.ok)throw Object.assign(new Error(value.error||'Không thể kết nối thư viện.'),{status:response.status,code:value.code,duplicates:value.duplicates});return value;
 }
 const post=(path,data={})=>api(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
 const source=image=>image.url+`?token=${token}&v=${encodeURIComponent(image.revision||'')}`;
@@ -41,7 +41,7 @@ function update(){
   $('#motion-note').textContent=image&&image.kind!=='image'?'Tự dừng khi cửa sổ ẩn · khoảng 15 FPS':'Thay đổi được xem trước ngay';
   $('#selection-state').textContent=!image?'Chọn ảnh hoặc GIF để bắt đầu':isSaved(image)?'Đã lưu · tự hiện khi mở Codex':`Chưa áp dụng · ${sizeText(image.size)}${image.kind==='gif'?` · ${image.frames} khung hình`:''}`;
   applyButton.disabled=!image||busy;
-  document.querySelectorAll('#restore,#files,#refresh,#preview-play,#strength,[data-strength],[data-filter],.card').forEach(control=>control.disabled=busy);
+  document.querySelectorAll('#restore,#files,#refresh,#preview-play,#strength,#undo-delete,[data-strength],[data-filter],.delete-media,.card').forEach(control=>control.disabled=busy||control.dataset.invalid==='true');
   $('#crop-open').disabled=busy||!image;
   const nextKey=image?`${mediaKey(image)}:${paused}:${document.hidden}`:'';
   if(nextKey!==previewKey){previewKey=nextKey;previewImage.removeAttribute('src');previewVideo.pause();previewVideo.removeAttribute('src');previewVideo.load();
@@ -51,20 +51,22 @@ function update(){
   paintCrop();
 }
 function renderGallery(){
-  const visible=images.filter(image=>filter==='all'||image.kind===filter);gallery.replaceChildren();gallery.hidden=visible.length===0;
-  $('#all-count').textContent=images.length;$('#image-count').textContent=images.filter(item=>item.kind==='image').length;$('#gif-count').textContent=images.filter(item=>item.kind==='gif').length;
-  $('#video-count').textContent=images.filter(item=>item.kind==='video').length;
-  $('#count').textContent=`${visible.length} hình nền`;
+  const items=[...images,...broken.map(item=>({...item,invalid:true}))],visible=items.filter(image=>filter==='all'||image.kind===filter);gallery.replaceChildren();gallery.hidden=visible.length===0;
+  $('#all-count').textContent=items.length;$('#image-count').textContent=items.filter(item=>item.kind==='image').length;$('#gif-count').textContent=items.filter(item=>item.kind==='gif').length;
+  $('#video-count').textContent=items.filter(item=>item.kind==='video').length;
+  $('#count').textContent=`${visible.length} tệp${visible.some(item=>item.invalid)?` · ${visible.filter(item=>item.invalid).length} tệp lỗi`:''}`;
   $('#empty').hidden=visible.length>0;$('#empty-title').textContent=filter==='video'?'Chưa có video nào':filter==='gif'?'Chưa có GIF nào':'Thư viện đang trống';
   $('#empty-description').textContent=filter==='video'?'Thêm MP4, M4V, WebM hoặc MOV để phát lặp vô hạn.':filter==='gif'?'Thêm file .gif, hoặc chép vào thư mục GIF rồi bấm Làm mới.':'Thêm ảnh, GIF hoặc video của bạn để bắt đầu.';
   $('#empty-folder').textContent=filter==='video'?'Mở thư mục video':filter==='gif'?'Mở thư mục GIF':'Mở thư mục ảnh';
   for(const image of visible){
-    const card=$('#card-template').content.firstElementChild.cloneNode(true);card.dataset.id=image.id;card.title=image.name;card.querySelector('.name').textContent=image.name;card.querySelector('.size').textContent=sizeText(image.size);
-    card.querySelector('.type-badge').textContent=image.kind==='video'?'VIDEO ↻':image.kind==='gif'?'GIF':image.mime.split('/')[1].toUpperCase();
+    const item=$('#card-template').content.firstElementChild.cloneNode(true),card=item.querySelector('.card');card.dataset.id=image.id;card.dataset.invalid=String(!!image.invalid);card.title=image.error||image.name;card.querySelector('.name').textContent=image.name;card.querySelector('.size').textContent=image.invalid?'Tệp lỗi':sizeText(image.size);
+    card.querySelector('.type-badge').textContent=image.kind==='video'?'VIDEO ↻':image.kind==='gif'?'GIF':image.mime?.split('/')[1].toUpperCase()||'LỖI';
     card.querySelector('.saved-label').textContent=saved.enabled&&saved.name===image.name&&(saved.kind||'image')===image.kind?'Đang dùng':'';
-    const img=card.querySelector('img');img.alt=image.name;
-    if(image.kind!=='image')poster(image).then(url=>{if(card.isConnected)img.src=url;}).catch(()=>{img.alt='Không tạo được ảnh xem trước';});else img.src=source(image);
-    card.addEventListener('click',()=>{if(selected!==image.id){selected=image.id;paused=false;}update();});gallery.append(card);
+    const img=card.querySelector('img'),failed=()=>{img.hidden=true;card.querySelector('.thumbnail-error').hidden=false;card.classList.add('thumbnail-failed');};
+    img.addEventListener('error',failed);
+    if(image.invalid)failed();else if(image.kind!=='image')poster(image).then(url=>{if(card.isConnected)img.src=url;}).catch(failed);else img.src=source(image);
+    const remove=item.querySelector('.delete-media');remove.title='Xóa khỏi thư viện';remove.setAttribute('aria-label',`Xóa ${image.name}`);remove.addEventListener('click',()=>removeMedia(image));
+    card.addEventListener('click',()=>{if(image.invalid)return;if(selected!==image.id){selected=image.id;paused=false;}update();});gallery.append(item);
   }update();
 }
 async function load(initial=false,manual=false){
@@ -72,9 +74,10 @@ async function load(initial=false,manual=false){
   try{
     const [result,settings]=await Promise.all([api('/api/images'),api('/api/settings')]);
     if(version!==loadVersion)return;
-    const nextSignature=JSON.stringify([result.images.map(({id,revision})=>[id,revision]),settings,result.warnings]);
+    const nextSignature=JSON.stringify([result.images.map(({id,revision})=>[id,revision]),settings,result.warnings,result.lastDeleted]);
     if(!initial&&!manual&&signature===nextSignature)return;
-    signature=nextSignature;images=result.images;saved=settings;
+    signature=nextSignature;images=result.images;broken=result.warnings||[];saved=settings;
+    lastDeletion=result.lastDeleted?.id||'';$('#undo-delete').hidden=!lastDeletion;$('#undo-delete').title=result.lastDeleted?`Khôi phục ${result.lastDeleted.name}`:'';
     const keep=new Set(images.map(mediaKey));for(const [key,pending]of posters)if(!keep.has(key)){posters.delete(key);pending.then(url=>URL.revokeObjectURL(url)).catch(()=>{});}
     if(!images.some(item=>item.id===selected))selected='';
     if(initial){strength.value=String(settings.strength);paused=settings.paused===true;}
@@ -95,22 +98,54 @@ async function optimize(image){
 }
 async function importFiles(files){
   if(busy||!files.length)return;busy=true;loadVersion++;update();
+  let added=0,skipped=0;const errors=[];
   try{
     for(let index=0;index<files.length;index++){
-      const file=files[index];
+      const file=files[index];try{
+      let upload;
       if(/\.(mp4|m4v|webm|mov)$/i.test(file.name)){
         if(file.size>200*1048576)throw new Error(`${file.name}: video vượt giới hạn 200 MB.`);
         say(`Đang thêm video ${index+1}/${files.length}: ${file.name}`);
-        const result=await api('/api/import-video',{method:'POST',headers:{'X-File-Name':encodeURIComponent(file.name),'Content-Type':'application/octet-stream'},body:file,signal:AbortSignal.timeout(180000)});selected=result.id;filter='video';paused=false;continue;
-      }
+        upload=keep=>api('/api/import-video',{method:'POST',headers:{'X-File-Name':encodeURIComponent(file.name),'X-Keep-Duplicate':String(keep),'Content-Type':'application/octet-stream'},body:file,signal:AbortSignal.timeout(180000)});
+      }else{
       if(file.size>30*1048576)throw new Error(`${file.name}: vượt giới hạn 30 MB.`);
       const decoded=await createImageBitmap(file);try{if(decoded.width*decoded.height>40000000)throw new Error('Ảnh vượt giới hạn 40 megapixel.');}finally{decoded.close();}
       say(`Đang thêm ${index+1}/${files.length}: ${file.name}`);
-      const result=await post('/api/import',{name:file.name,data:base64(new Uint8Array(await file.arrayBuffer()))});selected=result.id;filter=result.kind;paused=false;
+      const data=base64(new Uint8Array(await file.arrayBuffer()));upload=keep=>post('/api/import',{name:file.name,data,keepDuplicate:keep});
+      }
+      let result;try{result=await upload(false);}catch(error){
+        if(error.code!=='DUPLICATE_MEDIA')throw error;
+        const keep=await choice({title:'Tệp này đã có trong thư viện',description:`“${file.name}” có nội dung giống hệt tệp đã lưu, dù tên có thể khác.`,details:(error.duplicates||[]).map(item=>item.name).join('\n'),confirm:'Vẫn lưu bản sao',cancel:'Bỏ qua tệp này'});
+        if(!keep){skipped++;continue;}result=await upload(true);
+      }
+      added++;selected=result.id;filter=result.kind;paused=false;
+      }catch(error){errors.push(`${file.name}: ${error.message}`);}
     }
-    syncFilters();await load();say('Đã thêm vào thư viện. Chọn Áp dụng để dùng hình nền này.');
+    syncFilters();await load();say(`Đã thêm ${added} tệp${skipped?` · Bỏ qua ${skipped} tệp trùng`:''}${errors.length?` · ${errors.length} tệp lỗi: ${errors[0]}`:added?'. Chọn Áp dụng để dùng hình nền.':'.'}`,errors.length>0);
   }catch(error){syncFilters();say(error.message,true);await load();}finally{busy=false;update();$('#files').value='';}
 }
+function choice({title,description,details='',confirm,cancel,danger=false}){
+  const dialog=$('#choice-dialog');clearTimeout(toastTimer);$('#status').hidden=true;
+  $('#choice-title').textContent=title;$('#choice-description').textContent=description;$('#choice-details').textContent=details;$('#choice-details').hidden=!details;
+  $('#choice-confirm').textContent=confirm;$('#choice-confirm').classList.toggle('danger',danger);$('#choice-cancel').textContent=cancel;
+  $('#choice-icon use').setAttribute('href',danger?'#i-trash':'#i-image');dialog.returnValue='cancel';
+  return new Promise(resolve=>{dialog.addEventListener('close',()=>resolve(dialog.returnValue==='confirm'),{once:true});dialog.showModal();});
+}
+async function removeMedia(image){
+  if(busy)return;busy=true;loadVersion++;update();
+  try{
+    const active=saved.enabled&&saved.name===image.name&&(saved.kind||'image')===image.kind;
+    if(!await choice({title:'Xóa tệp khỏi thư viện?',description:active?'Đây là hình nền đang dùng. Xóa tệp sẽ tắt hình nền trên Codex. Bạn có thể hoàn tác sau khi xóa.':'Tệp được chuyển vào thư mục trash trên máy. Bạn có thể hoàn tác nếu bấm nhầm.',details:image.name,confirm:'Xóa khỏi thư viện',cancel:'Giữ lại',danger:true}))return;
+    if(selected===image.id){previewVideo.pause();previewVideo.removeAttribute('src');previewVideo.load();previewImage.removeAttribute('src');previewKey='';}
+    const result=await post('/api/delete',{kind:image.kind,name:image.name});lastDeletion=result.deleted.id;$('#undo-delete').hidden=false;cropDrafts.delete(image.id);
+    await load();say(result.deleted.active?'Đã xóa tệp và tắt hình nền đang dùng. Có thể bấm Hoàn tác.':'Đã xóa khỏi thư viện. Có thể bấm Hoàn tác.');refreshRuntime();
+  }catch(error){say(error.message,true);}finally{busy=false;update();}
+}
+$('#undo-delete').addEventListener('click',async()=>{
+  if(busy||!lastDeletion)return;busy=true;loadVersion++;update();
+  try{const result=await post('/api/undo-delete',{id:lastDeletion});lastDeletion='';$('#undo-delete').hidden=true;selected=result.id;filter=result.kind;syncFilters();await load();say('Đã đưa tệp trở lại thư viện. Chọn Áp dụng nếu muốn dùng lại.');}
+  catch(error){say(error.message,true);}finally{busy=false;update();}
+});
 function syncFilters(){document.querySelectorAll('[data-filter]').forEach(button=>{const active=button.dataset.filter===filter;button.classList.toggle('active',active);button.setAttribute('aria-pressed',String(active));});}
 document.querySelectorAll('[data-filter]').forEach(button=>button.addEventListener('click',()=>{filter=button.dataset.filter;syncFilters();renderGallery();}));
 document.querySelectorAll('[data-strength]').forEach(button=>button.addEventListener('click',()=>{strength.value=button.dataset.strength;update();}));

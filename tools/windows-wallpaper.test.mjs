@@ -27,7 +27,7 @@ test('concurrent imports and appearance changes preserve the final image without
   try{
     const url=new URL(active.url),headers={Authorization:`Bearer ${url.searchParams.get('token')}`,'Content-Type':'application/json'},jpeg=Buffer.from([255,216,255,217]).toString('base64');
     const post=(path,data)=>fetch(url.origin+path,{method:'POST',headers,body:JSON.stringify(data)});
-    const imports=await Promise.all(Array.from({length:8},()=>post('/api/import',{name:'same.jpg',data:jpeg})));
+    const imports=await Promise.all(Array.from({length:8},()=>post('/api/import',{name:'same.jpg',data:jpeg,keepDuplicate:true})));
     for(const response of imports)assert.equal(response.status,201);
     const names=await Promise.all(imports.map(async response=>(await response.json()).name));assert.equal(new Set(names).size,8);
     const mutations=await Promise.all(Array.from({length:16},(_,index)=>index%3===0?post('/api/restore',{}):post('/api/apply',{name:names[index%8],optimized:jpeg,strength:index})));

@@ -1,5 +1,5 @@
 import {createServer} from 'node:http';
-import {randomBytes,randomUUID,timingSafeEqual} from 'node:crypto';
+import {createHash,randomBytes,randomUUID,timingSafeEqual} from 'node:crypto';
 import {mkdir,readdir,readFile,writeFile,open,stat,unlink} from 'node:fs/promises';
 import {extname,join,resolve} from 'node:path';
 import {spawn} from 'node:child_process';
@@ -12,6 +12,7 @@ import {readSettings,writeSettings} from './settings.mjs';
 import {normalizeCrop} from './crop.mjs';
 import {MAX_VIDEO_BYTES,videoMime,videoFile,videoRuntime} from './video.mjs';
 import {createReadStream} from 'node:fs';
+import {findDuplicates,rejectDuplicates,deleteMedia,undoDelete,lastDeleted,copyName} from './library-files.mjs';
 
 const here=fileURLToPath(new URL('.',import.meta.url));
 const html=await readFile(join(here,'manager.html'));
@@ -88,10 +89,10 @@ export async function startLibrary({root,open:shouldOpen=true}={}){
             const cached=mediaCache.get(path);
             if(cached?.key===key){entries.push(cached.image);continue;}
             const {bytes,path:ignored,...metadata}=await readMedia(root,kind,entry.name),image={...metadata,revision:key};mediaCache.set(path,{key,image});entries.push(image);
-          }catch(error){warnings.push({name:entry.name,kind,error:error.message});}
+          }catch(error){warnings.push({id:`${kind}:${entry.name}`,name:entry.name,kind,error:error.message});}
         }
         for(const path of mediaCache.keys())if(!present.has(path))mediaCache.delete(path);
-        reply(res,200,{images:entries.sort((x,y)=>x.name.localeCompare(y.name)),warnings:warnings.slice(0,10)});return;
+        reply(res,200,{images:entries.sort((x,y)=>x.name.localeCompare(y.name)),warnings,lastDeleted:await lastDeleted(root)});return;
       }
       if(req.method==='GET'&&url.pathname==='/api/settings'){
         const value=await readSettings(root);
@@ -116,14 +117,17 @@ export async function startLibrary({root,open:shouldOpen=true}={}){
       if(req.method==='POST'&&url.pathname==='/api/import-video'){
         await videoRuntime(root);
         const name=safeImageName(decodeURIComponent(req.headers['x-file-name']||''));if(!videoMime(name))throw new Error('Chỉ nhận MP4, M4V, WebM hoặc MOV.');
-        const temporary=join(root,'videos',`.upload-${randomUUID()}${extname(name)}`);let handle,size=0,target,validationPoster;
+        const temporary=join(root,'videos',`.upload-${randomUUID()}${extname(name)}`),hash=createHash('sha256');let handle,size=0,target,validationPoster;
         try{
-          handle=await open(temporary,'wx');for await(const chunk of req){size+=chunk.length;if(size>MAX_VIDEO_BYTES)throw new Error('Video vượt giới hạn 200 MB.');await handle.writeFile(chunk);}await handle.close();handle=null;
+          handle=await open(temporary,'wx');for await(const chunk of req){size+=chunk.length;if(size>MAX_VIDEO_BYTES)throw new Error('Video vượt giới hạn 200 MB.');hash.update(chunk);await handle.writeFile(chunk);}await handle.close();handle=null;
+          const digest=hash.digest('hex');
+          await mutate(async()=>{
+          if(req.headers['x-keep-duplicate']!=='true')rejectDuplicates(await findDuplicates(root,size,digest));
           // Validate before publishing the original into the visible library.
           const validated=await readMedia(root,'video',temporary.split(/[\\/]/).pop());validationPoster=validated.poster.split('/').pop();
-          let index=0;while(true){target=index?`${name.slice(0,-extname(name).length)}-${index}${extname(name)}`:name;
+          let index=0;while(true){target=index?copyName(name,index):name;
             const {link}=await import('node:fs/promises');try{await link(temporary,join(root,'videos',target));break;}catch(error){if(error.code!=='EEXIST')throw error;index++;}}
-          reply(res,201,{name:target,kind:'video',id:`video:${target}`});
+          });reply(res,201,{name:target,kind:'video',id:`video:${target}`});
         }finally{if(handle)await handle.close();await unlink(temporary).catch(()=>{});if(validationPoster)for(const file of [validationPoster,validationPoster.replace(/\.jpg$/,'.json')])await unlink(join(root,'video-cache',file)).catch(()=>{});}return;
       }
       if(req.method==='GET'&&(url.pathname.startsWith('/images/')||url.pathname.startsWith('/gifs/'))){
@@ -136,10 +140,21 @@ export async function startLibrary({root,open:shouldOpen=true}={}){
         const mime=imageMime(name,bytes),kind=mime==='image/gif'?'gif':'image',folder=mediaFolder(root,kind);
         if(!mime)throw Object.assign(new Error('Chỉ nhận PNG, JPEG, WebP hoặc GIF hợp lệ.'),{status:400});
         if(kind==='gif')gifInfo(bytes);
-        let target=name,index=1,file;
-        while(true){try{file=await open(join(folder,target),'wx');break;}catch(error){if(error.code!=='EEXIST')throw error;target=`${name.replace(/(\.[^.]+)$/,'')}-${index++}${extname(name)}`;}}
+        let target=name;await mutate(async()=>{
+        if(data.keepDuplicate!==true)rejectDuplicates(await findDuplicates(root,bytes.length,createHash('sha256').update(bytes).digest('hex')));
+        let index=1,file;
+        while(true){try{file=await open(join(folder,target),'wx');break;}catch(error){if(error.code!=='EEXIST')throw error;target=copyName(name,index++);}}
         try{try{await file.writeFile(bytes);}finally{await file.close();}}catch(error){await unlink(join(folder,target)).catch(()=>{});throw error;}
-        reply(res,201,{name:target,kind,id:`${kind}:${target}`});return;
+        });reply(res,201,{name:target,kind,id:`${kind}:${target}`});return;
+      }
+      if(req.method==='POST'&&url.pathname==='/api/delete'){
+        const data=await bodyJSON(req),deleted=await mutate(()=>deleteMedia(root,data.kind,data.name));
+        mediaCache.delete(join(mediaFolder(root,deleted.kind),deleted.name));
+        reply(res,200,{ok:true,deleted});return;
+      }
+      if(req.method==='POST'&&url.pathname==='/api/undo-delete'){
+        const data=await bodyJSON(req),restored=await mutate(()=>undoDelete(root,data.id));
+        reply(res,200,{ok:true,...restored});return;
       }
       if(req.method==='POST'&&url.pathname==='/api/apply'){
         const data=await bodyJSON(req);
@@ -171,7 +186,7 @@ export async function startLibrary({root,open:shouldOpen=true}={}){
         reply(res,200,{ok:true});setTimeout(()=>server.close(),50).unref();return;
       }
       reply(res,404,{error:'Không tìm thấy.'});
-    }catch(error){reply(res,error.status||400,{error:error.message||'Không thể xử lý yêu cầu.'});}
+    }catch(error){reply(res,error.status||400,{error:error.message||'Không thể xử lý yêu cầu.',...(error.code==='DUPLICATE_MEDIA'?{code:error.code,duplicates:error.duplicates}:{})});}
   });
   await new Promise((resolveListen,reject)=>{server.once('error',reject);server.listen(0,'127.0.0.1',resolveListen);});
   const address=server.address(),url=`http://127.0.0.1:${address.port}/?token=${token}`;
