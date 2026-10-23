@@ -1,179 +1,129 @@
-# Codex Wallpaper for Windows · Startup Animation
+# Hình nền Codex cho Windows
 
-Fork được phát triển bởi [ThanhTris](https://github.com/ThanhTris/codex-startup-animation), dựa trên [panding999/codex-startup-animation](https://github.com/panding999/codex-startup-animation).
+**Codex Wallpaper** giúp bạn dùng ảnh riêng hoặc GIF làm hình nền cho Codex trên Windows. Chọn và lưu một lần trong thư viện; những lần sau, mở **biểu tượng Codex gốc** như bình thường để hiện hình nền đã lưu.
 
-Phần phát triển Windows gồm thư viện ảnh riêng, GIF, xem trước và chỉnh độ đậm, tự hiện hình nền khi mở biểu tượng Codex gốc và khôi phục giao diện. Ảnh cá nhân được lưu ngoài repository. Xem [hướng dẫn cài và sử dụng Windows](windows/README.md) và [kết quả kiểm tra](docs/stability-review.md).
+Dự án do [ThanhTris](https://github.com/ThanhTris/codex-startup-animation) phát triển từ bản sao nhánh của [panding999/codex-startup-animation](https://github.com/panding999/codex-startup-animation). Mã hoạt ảnh khởi động trên macOS của dự án gốc vẫn được giữ lại, với [hướng dẫn riêng bằng tiếng Việt](docs/macos.md).
 
-Phần tài liệu và triển khai macOS từ dự án gốc được giữ bên dưới.
+## App này làm được gì?
 
-为 macOS 上的 Codex 添加可自定义的启动动画，也可在 Windows 上用个人图片或 GIF 设置 Codex 壁纸。
-
-## 效果演示
-
-**[▶ 点击观看启动动画实录（抖音）](https://v.douyin.com/XaCddnhQbQ0/)**
-
-想先了解实际效果，可以点击上方链接观看作者发布的作品视频。
-
-启动序列约 12 秒：脉冲加载 → 头像与旋转圆环 → 碎片散开 → 从左到右汇聚成角色线稿 → 彩色背景显现 → 向中央收拢并进入官方页面。头像、背景、标题和字幕都可以在设置中更换。
-
-这是个人开发的**非官方外部启动器**，不是 Codex 官方插件。它启动本机已经安装的官方应用，在主窗口临时加入动画；不修改官方应用包或 `app.asar`，不替换聊天、模型或工具功能。
-
-## 功能
-
-- 两张自定义图片：前半段头像、后半段背景；换背景时自动生成轮廓。
-- 可编辑开场标题、小字和后半段字幕，文字留空可隐藏。
-- 背景透明程度可调，支持恢复原版外观。
-- 点击跳过按钮或按 Esc 可跳过动画，支持系统“减少动态效果”设置。
-- 启动辅助进程确认动画开始后退出；动画结束删除覆盖层，只保留静态壁纸及设置入口。
-- 提供独立预览应用，便于调试而不影响官方应用。
-- Windows 提供独立图片库、个人壁纸快捷方式、即时应用与恢复原版外观。
-
-## 环境要求
-
-macOS 启动动画和 Windows 壁纸使用独立实现。Windows 支持静态图片和 GIF，不播放 macOS 的启动动画。
-
-**macOS：**
-
-- macOS 13 或更高版本。
-- Xcode Command Line Tools（构建使用 `swiftc`、AppKit、WebKit 和 Vision）。
-- 已安装官方 Codex / ChatGPT 桌面应用，应用标识为 `com.openai.codex`。
-- 正式启动器复用官方应用内的 Node，不需要额外打包 Electron，也没有 npm 依赖。
-
-**Windows：**
-
-- Windows 10/11，已安装 Microsoft Store 版 Codex (`OpenAI.Codex`)。
-- 图片库优先使用 PATH 上的 Node.js 22 或更新版本，否则使用 Codex 自带的 Node.js。常驻壁纸层不依赖 Node.js。
-- 不需要 npm package 或管理员权限。
-
-曾在官方应用 **26.924.22138** 上使用并验证。新版本可能改变内置运行环境、窗口结构或调试能力，不保证自动兼容所有版本。
-
-## 构建与使用
-
-在项目根目录执行：
-
-```sh
-bash tools/build-extension.sh
-bash tools/build-macos.sh
-```
-
-构建结果：
-
-| 文件 | 用途 |
+| Chức năng trên Windows | Cách hoạt động |
 | --- | --- |
-| `dist/Codex.app` | 粉色图标的正式启动入口 |
-| `dist/Aemeath Startup.app` | 独立动画预览 |
+| Thư viện ảnh cá nhân | Thêm PNG, JPEG, WebP hoặc GIF bằng nút chọn tệp, kéo thả hoặc chép vào thư mục riêng. |
+| Phân loại ảnh | Lọc **Tất cả**, **Ảnh tĩnh** và **GIF**; có nút mở từng thư mục. |
+| Xem trước giao diện | Mô phỏng lớp ảnh phủ lên Codex trước khi áp dụng. |
+| Chỉnh độ đậm nhạt | Điều chỉnh từ 0–75%, có mức chọn nhanh 15%, 25% và 35%. |
+| Đổi hình nền khi đang dùng | Bấm **Áp dụng hình nền** để lưu lựa chọn và cập nhật cửa sổ Codex đang mở. |
+| Tự hiện khi mở app gốc | Bộ nạp chạy nền nhận diện cửa sổ Codex; không cần mở thư viện mỗi lần dùng. |
+| Phát ảnh động | GIF giữ nguyên chuyển động, giới hạn khoảng 15 khung hình/giây; tự dừng khi mọi cửa sổ Codex bị ẩn hoặc thu nhỏ. |
+| Tạm dừng GIF | Chọn tạm dừng trong thư viện rồi áp dụng để dùng khung hình tĩnh. |
+| Khôi phục giao diện | Tắt lớp hình nền và giữ nguyên ảnh trong thư viện. |
+| Lưu trên máy | Ảnh và cấu hình nằm ngoài kho mã nguồn, không được gửi lên mạng. |
 
-1. 保存工作，用 **⌘Q** 完全退出正在运行的官方应用。
-2. 打开 `dist/Codex.app`，或者双击 `扩展启动Codex.command`。
-3. 官方页面与动画并行加载，动画结束后进入正常页面。
-4. 可以把粉色启动器复制到 `~/Applications`，之后从该入口启动。
+Windows dùng **lớp ảnh trong suốt phủ lên cửa sổ, kể cả chữ**. Hãy bắt đầu ở mức 15–25% rồi điều chỉnh để nội dung dễ đọc. Lớp ảnh cho thao tác chuột đi xuyên qua và không lấy quyền nhập liệu của Codex. Hình xem trước là bản mô phỏng; màu sắc và bố cục có thể khác app thật.
 
-如果官方应用已经在运行，粉色启动器只会切回已有窗口，不会强行重启或重播。直接打开官方图标不会自动加载本项目的动画。仓库不包含已编译的 `.app`，首次使用前需要构建。
+## Yêu cầu trên Windows
 
-单独检查动画时，双击 `预览动画.command`。浏览器打开 `index.html` 也可以使用时间轴和重播控件；正式集成以 macOS 应用为准。
+- Windows 10/11 và bản Codex cài từ Microsoft Store, có mã gói `OpenAI.Codex`.
+- Windows PowerShell và .NET Framework có sẵn trên hệ thống để biên dịch bộ nạp.
+- Thư viện ảnh dùng Node.js 22 trở lên trong `PATH`; nếu không có, công cụ tìm Node.js đi kèm Codex. Bộ nạp hình nền chạy riêng, không phụ thuộc Node.js.
+- Không cần cài gói npm hoặc chạy bộ cài với quyền quản trị.
 
-### Windows：安装个人图片或 GIF 壁纸
+## Cài đặt
 
-在 PowerShell 中运行：
+Tải mã nguồn từ [repo này](https://github.com/ThanhTris/codex-startup-animation), mở PowerShell tại thư mục dự án rồi chạy:
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\windows\install.ps1
 ```
 
-从 Start Menu 打开 **Codex Wallpaper**，添加或复制图片到 `%USERPROFILE%\CodexWallpaper\images`，GIF 放在同级 `gifs` 文件夹，预览并应用。GIF 限制约 15 FPS，隐藏或最小化时暂停。此后直接打开官方 Codex 图标；登录启动的 Windows 程序会自动显示透明图片层，无需每次打开图片库。图片层也会影响文字颜色，与 macOS 的网页背景方式不同。详见 [Windows 使用说明](windows/README.md)、[稳定性检查](docs/stability-review.md) 和 [fork 调研](docs/windows-forks.md)。
+Bộ cài tạo mục **Codex Wallpaper** trong trình đơn Start và tác vụ chạy bộ nạp khi đăng nhập Windows. Ảnh cá nhân và lựa chọn đã lưu được giữ khi cài lại.
 
-## 图片与文字设置
+Kho mã nguồn chứa mã để tự biên dịch; không cần sử dụng ảnh mẫu của tác giả gốc làm hình nền Windows.
 
-动画中或结束后，按 **⌘⌥B** 打开设置。
+## Cách sử dụng
 
-| 设置 | 说明 |
+1. Mở **Codex Wallpaper** trong trình đơn Start. Nếu đã có lối tắt **Codex With Wallpaper** từ bản cũ trên màn hình nền, bạn cũng có thể dùng lối tắt đó để mở thư viện.
+2. Bấm **Thêm ảnh hoặc GIF**, kéo thả tệp vào thư viện hoặc chép vào thư mục ảnh/GIF.
+3. Chọn hình, xem trước và chỉnh **Độ hiện của hình nền**. Với GIF, có thể chọn **Tạm dừng GIF**.
+4. Bấm **Áp dụng hình nền**. Nếu Codex đang mở, hình nền sẽ được cập nhật.
+5. Đóng thư viện. Từ lần sau, mở **biểu tượng Codex/ChatGPT gốc của gói Codex** như bình thường; bộ nạp sẽ tự hiện lựa chọn đã lưu.
+
+Nút **Mở Codex** trong thư viện chỉ giúp mở ứng dụng gốc cho tiện kiểm tra. Bạn không phải bấm nút này mỗi lần sử dụng. Nút **Khôi phục giao diện gốc** tắt hình nền mà không xóa thư viện.
+
+## Thư mục dữ liệu
+
+| Đường dẫn | Nội dung |
 | --- | --- |
-| 头像 | PNG / JPEG / WebP，导入时居中裁成 512×512 |
-| 背景 | PNG / JPEG / WebP，导入时居中裁成 1536×1024，并生成线稿 |
-| 标题与字幕 | 修改两段动画的文字，留空则隐藏 |
-| 背景显现程度 | 默认 42%，0% 关闭壁纸 |
-| 保存并预览 | 保存图片和文字，然后重播 |
-| 右上角 × / Esc | 放弃未保存修改并返回官方页面，不重播 |
-| 关闭美化，恢复 Codex 外观 | 移除外观样式及设置入口，保留已保存的自定义设置 |
+| `%USERPROFILE%\CodexWallpaper\images` | Ảnh tĩnh của bạn và bản JPEG tối ưu được tạo riêng. |
+| `%USERPROFILE%\CodexWallpaper\gifs` | GIF gốc, giữ nguyên dữ liệu động khi áp dụng. |
+| `%USERPROFILE%\CodexWallpaper\settings.json` | Lựa chọn hình nền, độ hiện và trạng thái tạm dừng. |
+| `%USERPROFILE%\CodexWallpaper\app` | Mã chương trình và bộ nạp đã biên dịch trên máy. |
 
-单张图片不超过 30 MB。图片和文字保存在本机 IndexedDB，不上传；独立预览与正式应用的设置互不共享。升级启动器不会主动清空已保存的设置。
+Bạn có thể chép tệp vào thư mục rồi bấm **Làm mới thư viện**. Thư viện cũng tự kiểm tra thay đổi khi đang mở. Việc đóng Codex hoặc thư viện không xóa ảnh và cấu hình.
 
-## 默认素材与仓库内容
+## Giới hạn ảnh và GIF
 
-仓库只保留运行必需的默认素材：
+- Mỗi tệp tối đa **30 MB**.
+- Ảnh tĩnh tối đa **40 megapixel**; khi áp dụng sẽ tạo JPEG tối ưu riêng và giữ ảnh gốc.
+- GIF tối đa **2 megapixel**, **300 khung hình** và tổng số điểm ảnh của các khung hình không vượt **120 triệu**. Tệp phải đáp ứng đồng thời các giới hạn này.
+- GIF trong Codex được giới hạn khoảng **15 khung hình/giây**. Phần xem trước phát theo tốc độ GIF gốc nên có thể khác bộ nạp.
+- Ảnh thu nhỏ của GIF là ảnh tĩnh để tránh phát nhiều GIF cùng lúc trong thư viện.
 
-- `assets/avatar.jpg`：头像。
-- `assets/artwork.jpg`：背景。
-- `assets/contours.js`：与默认背景匹配的轮廓。
-- `assets/codex-pink.icns`：个人启动入口图标。
+Mức CPU/RAM phụ thuộc kích thước và nội dung GIF. [Báo cáo tài nguyên](docs/gif-performance.md) ghi số đo của chương trình thử riêng; chưa phải số đo CPU/GPU của mọi GIF trong bản đã tích hợp.
 
-本地备用图库 `assets/bg1/`、`assets/bg2/`、图标源 PNG、参考视频、临时截图、构建缓存及 `dist/` 不提交。没有这些备用文件，下载的源码仍可直接构建。
+## Cách hoạt động
 
-如需从自己的源图重新生成默认素材，可执行：
+Trên Windows, thư viện chỉ dùng để chọn và lưu hình. Chương trình `CodexWallpaperOverlay.exe` chạy nền, nhận diện cửa sổ Codex chính thức và hiển thị lớp ảnh theo vị trí cửa sổ. Khi đóng Codex, bộ nạp chờ lần mở tiếp theo; khi đăng nhập Windows, tác vụ `CodexWallpaperOverlay` khởi động bộ nạp.
 
-```sh
-AVATAR_SOURCE="/absolute/path/avatar.jpg" \
-ARTWORK_SOURCE="/absolute/path/background.png" \
-bash tools/prepare-defaults.sh
+Thư viện được phục vụ qua địa chỉ nội bộ `127.0.0.1` bằng tác vụ `CodexWallpaperService`, chạy khi cần mở thư viện. Bộ nạp hình nền hoạt động độc lập với cửa sổ thư viện. Bản Windows hiện không sửa gói cài Codex, không chèn DLL và không mở cổng gỡ lỗi của Codex.
 
-bash tools/build-extension.sh
+## Khi gặp lỗi
+
+- **Mở Codex gốc mà chưa thấy hình:** mở thư viện, kiểm tra trạng thái phía trên và bấm Áp dụng. Nếu bộ nạp chưa chạy, mở lại thư viện hoặc chạy lại bộ cài.
+- **Không thấy GIF trong danh sách:** kiểm tra tệp có nằm trong thư mục `gifs`, đúng định dạng và không vượt giới hạn; bấm Làm mới.
+- **Chữ khó đọc:** giảm độ hiện xuống 15–25% hoặc Khôi phục giao diện gốc.
+- **Trang thư viện cũ báo mất kết nối sau khi cập nhật:** đóng trang đó và mở lại **Codex Wallpaper** từ trình đơn Start.
+
+Hướng dẫn kiểm tra trạng thái, tắt bộ nạp và gỡ cài đặt nằm trong [tài liệu Windows](windows/README.md).
+
+## Kiểm thử và phạm vi hỗ trợ
+
+```powershell
+node --test tools/extension.test.mjs tools/windows-wallpaper.test.mjs
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tools\windows-overlay.test.ps1
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tools\windows-launcher.test.ps1
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tools\windows-taskbar.test.ps1
 ```
 
-也可以只设置其中一个变量。日常换图推荐直接使用应用内设置，无需重新构建。运行用背景与线稿来自同一张裁切后的图片，避免描线与彩色画面错位。
+Đợt rà soát ngày 23/10/2026 đã kiểm tra lưu/mở lại ảnh và GIF, 24 vòng đóng/mở cửa sổ, thu nhỏ/khôi phục, thao tác lưu đồng thời và 40 vòng đổi GIF/ảnh tĩnh không tích lũy tài nguyên đồ họa GDI trong kiểm thử. Xem [báo cáo độ ổn định](docs/stability-review.md).
 
-## 实现与资源占用
+Chưa kiểm tra đầy đủ việc khởi động lại máy, nhiều màn hình với mức DPI khác nhau hoặc chạy liên tục nhiều giờ. Các phiên bản Windows/Codex mới có thể cần điều chỉnh. Phần macOS được giữ từ dự án gốc và chưa được kiểm thử lại trên máy Windows này.
 
-启动器确认目标应用的签名和标识，打开限定在 `127.0.0.1` 的调试端口，并校验端口所属进程。只在官方主窗口注入临时 iframe，不修改原页面 CSP，也不启动图片资源服务器。
+## Tài liệu khác
 
-头像碎片贴图在播放计时前准备，转场结束后释放。没有持续播放的视频、后台动画服务或常驻轮询。动画结束仍会保留图片、静态样式和设置所需资源，因此额外内存不是零；实际峰值未完成系统级量化测试。
+- [Cài đặt, sử dụng và chẩn đoán trên Windows](windows/README.md).
+- [Hoạt ảnh khởi động và hình nền trên macOS](docs/macos.md).
+- [Cấu trúc phần mở rộng macOS](extension/README.md).
+- [Khảo sát các bản sao nhánh hỗ trợ Windows](docs/windows-forks.md).
+- [Nguồn tham khảo và hình ảnh mẫu](docs/references.md).
 
-**macOS 本机调试端口会随官方应用进程保留。** 即使 macOS 辅助进程已经退出、外观已恢复，同机进程仍可能连接该端口。完全退出应用，再从官方图标正常打开，才会结束本次扩展启动的调试状态。Windows 当前默认使用外部透明窗口，不开启 Codex 调试端口；仓库保留了旧版调试启动代码供参考。
-
-## 更新与已知限制
-
-- 官方应用可以按原有方式更新；外部启动器独立存在，但更新后可能需要适配。
-- 更新启动器后，需要完全退出官方应用，再从粉色图标启动，才能加载新版。
-- 接入前需要等待主窗口就绪，可能短暂看到官方加载页。
-- 整页刷新、新窗口、更新后自动重启，可能不会保留美化；本项目不常驻监听并重新注入。
-- 应用本身的侧边栏功能入口受官方功能开关和账户状态影响。本地对照曾出现两种启动方式下入口显示不一致，且结果会反转；根因尚未确定，不能声称所有界面状态完全一致。
-- 若扩展接入失败，完全退出后从官方图标打开即可使用原应用，无需重新安装。
-
-## 开发与验证
-
-```sh
-# 使用已有的 Node.js 22+，或官方应用附带的 Node 执行
-node --test tools/extension.test.mjs
-
-# 构建独立预览后，执行完整播放检查
-"dist/Aemeath Startup.app/Contents/MacOS/AemeathStartup" --smoke-test
-```
-
-播放检查应输出 `ANIMATION COMPLETE`，并在 `SMOKE RESULT` 中显示 `completed: "true"`。自动化测试覆盖目标窗口筛选、回环地址校验、协议错误和超时处理。
-
-同窗口集成测试使用模拟宿主，不是真实官方页面：
-
-```sh
-node tools/extension-preview.mjs
-python3 -m http.server 8765 --bind 127.0.0.1
-# 打开 http://127.0.0.1:8765/.build/extension-preview/
-```
-
-## 目录
+## Cấu trúc dự án
 
 ```text
-Native/          macOS 启动入口和独立预览
-extension/       外部接入、窗口筛选、静态背景
-windows/         Windows 图片/GIF 库、启动器和透明壁纸层
-assets/          运行用默认素材
-tools/          构建、素材处理与验证脚本
-index.html       动画和设置面板
-animation.js     时间轴、碎片与描线
-image-settings.js  本机自定义设置
-style.css        动画样式
+windows/          Thư viện ảnh/GIF, bộ cài và lớp hình nền Windows
+Native/           Chương trình khởi động và xem trước trên macOS
+extension/        Kết nối và giao diện tạm thời cho macOS
+assets/           Ảnh, đường nét và biểu tượng mẫu của phần macOS
+tools/            Công cụ biên dịch, đo tài nguyên và kiểm thử
+docs/             Hướng dẫn và báo cáo bằng tiếng Việt
+index.html        Trang hoạt ảnh và bảng cài đặt của dự án gốc
+animation.js      Hoạt ảnh, mảnh ảnh và hiệu ứng vẽ đường nét
+image-settings.js Lưu ảnh và cài đặt cục bộ của phần hoạt ảnh
+style.css         Kiểu hiển thị của phần hoạt ảnh
 ```
 
-## 参考与素材说明
+## Nguồn gốc và quyền sử dụng
 
-实现思路参考了 Codex Skin Launcher、Codex Dream Skin 和 DSH Boot Animation，具体范围见 [参考说明](docs/references.md)。
+Đây là dự án cá nhân, không có quan hệ trực thuộc OpenAI. Mã nguồn macOS và hình ảnh mẫu được kế thừa từ [repo gốc của panding999](https://github.com/panding999/codex-startup-animation); phần phát triển Windows và các nguồn tham khảo được ghi trong [tài liệu nguồn gốc](docs/references.md).
 
-本项目与 OpenAI 无隶属关系。角色图片及花形图标涉及的权利归相应权利人；仓库包含素材不代表授予这些素材的再分发或商标使用许可。当前未为项目代码指定开源许可证。
+Quyền đối với hình nhân vật và biểu tượng thương hiệu thuộc chủ sở hữu tương ứng. Việc có hình mẫu trong repo không cấp thêm quyền phân phối hoặc sử dụng nhãn hiệu. Dự án hiện chưa chỉ định giấy phép mã nguồn mở cho mã chương trình.

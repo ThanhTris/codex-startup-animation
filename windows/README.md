@@ -1,48 +1,96 @@
-# Codex Wallpaper trên Windows
+# Hướng dẫn Codex Wallpaper trên Windows
 
-Cài bằng Windows PowerShell:
+Codex Wallpaper quản lý ảnh/GIF cá nhân và tự hiện lớp hình nền khi bạn mở ứng dụng Codex gốc. Xem [danh sách chức năng](../README.md#app-này-làm-được-gì) để hiểu các thao tác chính.
+
+## Cài đặt
+
+Mở Windows PowerShell tại thư mục dự án rồi chạy:
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\windows\install.ps1
 ```
 
-Bộ cài tạo `CodexWallpaperOverlay.exe` và tác vụ đăng nhập `CodexWallpaperOverlay`, chạy dưới tài khoản hiện tại, quyền Limited. Nó theo dõi cửa sổ app Store `OpenAI.Codex` và hiển thị lớp ảnh trong suốt. Không cần mở thư viện hoặc launcher mỗi lần dùng Codex.
+Bộ cài tạo `CodexWallpaperOverlay.exe` và tác vụ đăng nhập `CodexWallpaperOverlay`, chạy dưới tài khoản hiện tại với quyền người dùng thông thường (`Limited`). Bộ nạp theo dõi cửa sổ thuộc gói Microsoft Store `OpenAI.Codex` và hiển thị lớp ảnh trong suốt.
 
-## Sử dụng
+Thư viện cần Node.js 22 trở lên trong `PATH` hoặc Node.js đi kèm Codex. Không cần cài thêm gói npm; bộ nạp hình nền chạy độc lập với Node.js. Yêu cầu hệ thống đầy đủ nằm ở [README chính](../README.md#yêu-cầu-trên-windows).
 
-1. Mở **Codex Wallpaper** trong Start Menu hoặc **Codex With Wallpaper** trên Desktop. Tab **Ảnh tĩnh / GIF** lọc từng loại. Thêm PNG/JPEG/WebP/GIF bằng nút Thêm hoặc kéo thả. Nút **Thư mục ảnh / Thư mục GIF** mở đúng thư mục; thư viện tự kiểm tra file mới khi đang mở.
-2. Chọn ảnh, chỉnh độ hiện ở bản mô phỏng rồi bấm **Áp dụng hình nền**. Nếu Codex đang mở, lớp ảnh tự cập nhật.
-3. Đóng thư viện. Sau đó mở **biểu tượng ChatGPT/Codex gốc** như bình thường, kể cả sau khi đã thoát hẳn app. Bộ nạp tự hiện ảnh đã lưu. Tác vụ đăng nhập khởi động bộ nạp cho phiên Windows tiếp theo.
+## Chọn ảnh và áp dụng
 
-GIF nằm tại `%USERPROFILE%\CodexWallpaper\gifs`, giữ nguyên dữ liệu động khi áp dụng. Bộ nạp dùng thời gian từng frame, lặp liên tục và giới hạn dựng tối đa khoảng 15 FPS. Chỉ một decoder/timeline dùng chung cho các cửa sổ; chuyển frame sang bộ đệm RGBA trước khi vẽ, không cache toàn bộ frame đã giải nén. Bộ đếm dừng khi mọi cửa sổ bị thu nhỏ/ẩn hoặc bạn tạm dừng GIF rồi Áp dụng. Thumbnail GIF là ảnh tĩnh để cả thư viện không chạy nhiều GIF cùng lúc; preview phát theo GIF gốc nên FPS có thể khác app.
+1. Mở **Codex Wallpaper** trong trình đơn Start. Nếu có lối tắt **Codex With Wallpaper** từ bản cũ trên màn hình nền, lối tắt này cũng mở thư viện.
+2. Chọn bộ lọc **Tất cả**, **Ảnh tĩnh** hoặc **GIF**. Thêm PNG/JPEG/WebP/GIF bằng nút **Thêm ảnh hoặc GIF**, kéo thả, hoặc chép vào thư mục tương ứng.
+3. Chọn hình, chỉnh **Độ hiện của hình nền** trong phần **Xem trước**. Thử 15–25% để chữ dễ đọc; có mức chọn nhanh 15%, 25% và 35%.
+4. Với GIF, chọn **Tạm dừng GIF** nếu muốn dùng ảnh tĩnh. Muốn lưu trạng thái này cho Codex, bấm **Áp dụng hình nền**.
+5. Bấm **Áp dụng hình nền** để lưu ảnh, độ hiện và trạng thái GIF. Nếu Codex đang mở, bộ nạp sẽ cập nhật lớp ảnh.
+6. Đóng thư viện. Những lần sau, mở **biểu tượng Codex/ChatGPT gốc của gói Codex** như bình thường.
 
-Mỗi file tối đa 30 MB. Ảnh tĩnh tối đa 40 megapixel. GIF tối đa 2 megapixel, 300 frame và tổng số pixel các frame không vượt 120 triệu; file vượt giới hạn được báo trong thư viện thay vì âm thầm bỏ qua. Bộ lọc GIF đọc cấu trúc khối theo [GIF89a](https://www.w3.org/Graphics/GIF/spec-gif89a.txt) trước khi chuyển cho decoder Windows. Các GIF có cùng tên với ảnh ở thư mục khác vẫn được phân biệt.
+Nút **Mở Codex** kích hoạt ứng dụng chính thức, không cần đóng phiên làm việc đang mở. Bạn không phải mở thư viện hoặc dùng lối tắt riêng mỗi lần dùng Codex.
 
-**Ảnh phủ lên cửa sổ, kể cả chữ**; đây không phải CSS đặt ảnh sau nội dung. Thử 15–25% rồi cân chỉnh. Preview mô phỏng cùng độ trong suốt, nhưng màu giao diện và bố cục thực tế có thể khác. Lớp ảnh không nhận chuột/bàn phím, không lấy focus, không có nút taskbar riêng; nó ẩn khi thu nhỏ hoặc app ở desktop ảo khác. Hộp chọn file và cửa sổ có owner không được coi là cửa sổ chính.
+## Thư viện và dữ liệu
 
-**Khôi phục giao diện gốc** ẩn ảnh, giữ thư viện. Đóng thư viện hoặc thoát Codex không dừng bộ nạp; nó chờ lần mở tiếp theo. Mở lại thư viện sẽ khởi động bộ nạp nếu đã dừng.
+Dữ liệu nằm dưới `%USERPROFILE%\CodexWallpaper`, bên ngoài kho mã nguồn:
 
-Nếu còn shortcut **Codex With Wallpaper** do phiên bản trước tạo trên Desktop, bộ cài đưa shortcut đó về thư viện chọn ảnh (`--settings`). Không tạo thêm một ứng dụng Codex để dùng hằng ngày.
+| Vị trí | Nội dung |
+| --- | --- |
+| `images` | Ảnh tĩnh gốc và JPEG tối ưu được tạo riêng. |
+| `gifs` | GIF gốc, không chuyển thành JPEG khi áp dụng. |
+| `app` | Mã chương trình và các tệp đã biên dịch trên máy. |
+| `settings.json` | Ảnh được chọn, độ hiện, loại ảnh và trạng thái tạm dừng. |
+| `integration.json` | Kiểu tích hợp đang dùng. |
+| `overlay-state.json` | Trạng thái bộ nạp và số lớp ảnh đang hiển thị. |
+| `overlay.log` | Nhật ký bộ nạp và lỗi phát sinh. |
+| `launcher.log`, `service.log` | Nhật ký mở chương trình và dịch vụ thư viện. |
+| `backups` | Bản sao lối tắt cũ khi cần chuyển về ứng dụng gốc. |
 
-Bộ nạp tạo lại lớp ảnh nếu Windows hủy nó khi app đổi cửa sổ, kiểm tra HWND thật và giữ lỗi từng cửa sổ riêng. WinEvent ngoài tiến trình cập nhật vị trí/thu nhỏ/khôi phục ngay khi có sự kiện; quét định kỳ vẫn được giữ làm dự phòng. Không chèn DLL vào app. `overlay-state.json` báo số lớp ảnh đang hiển thị theo trạng thái Windows thực tế; log ghi các lần tạo lại và thay đổi trạng thái.
+**Thư mục ảnh** và **Thư mục GIF** mở đúng thư mục để bạn chép tệp vào. Bấm **Làm mới thư viện** để đọc ngay; khi đang mở, thư viện cũng tự kiểm tra thay đổi.
 
-Tệp cấu hình tạm thời bị khóa hoặc đang được thay thế sẽ được đọc lại; ảnh đang hiện được giữ tối đa hai giây trong lúc chờ. Cấu hình mất lâu hơn sẽ báo lỗi, còn Khôi phục/0% vẫn có hiệu lực ngay. API trạng thái cũng đọc lại khi tệp trạng thái đang được thay thế. Khi cập nhật bộ cài, thư viện đang chạy được khởi động lại để nạp mã mới; mở lại cửa sổ thư viện cũ nếu còn hiển thị liên kết phiên trước.
+Mỗi tệp tối đa **30 MB**. Ảnh tĩnh tối đa **40 megapixel**. GIF tối đa **2 megapixel**, **300 khung hình** và tổng số điểm ảnh của các khung hình không vượt **120 triệu**; phải đáp ứng đồng thời các giới hạn. Tệp không hợp lệ hoặc vượt giới hạn được báo trong thư viện. Ảnh và GIF cùng tên ở hai thư mục vẫn được phân biệt.
 
-Lưu/khôi phục được xử lý tuần tự, dùng tệp tạm và thay thế nguyên khối; khóa tệp ngắn của Windows được thử lại. UI khóa thao tác thay đổi trong lúc lưu, bỏ phản hồi làm mới cũ và cập nhật preview khi file cùng tên bị chép đè. Áp dụng lại GIF luôn nạp decoder mới. Bộ cài giữ nguyên shortcut thư viện đã ghim (`--settings`) khi sửa shortcut Codex cũ.
+Ảnh không được gửi lên mạng. Dữ liệu đặt tại thư mục hồ sơ người dùng để tiến trình bên ngoài bản Store đọc được, tránh chuyển hướng AppData của MSIX. Bộ cài có thể sao chép dữ liệu cũ từ AppData khi cần, không xóa bản nguồn.
 
-Nút **Mở Codex gốc** kích hoạt gói app chính thức, không thêm cổng debug hoặc chờ thoát phiên đang làm việc. Shortcut cũ mở qua `CodexWallpaper.exe` vẫn dùng được, nhưng không còn là điều kiện để hiện ảnh. Bộ cài mới đưa các pin đã bị bộ cài cũ đổi sang launcher về app chính thức, giữ bản sao trong `backups`, rồi ngừng chuyển pin sang launcher.
+## GIF và mức sử dụng tài nguyên
 
-## Dữ liệu và chẩn đoán
+GIF giữ nguyên dữ liệu động, phát lặp liên tục theo thời gian từng khung hình và giới hạn khoảng **15 khung hình/giây** trong Codex. Các cửa sổ dùng chung một bộ giải mã và trục thời gian; chương trình không lưu sẵn toàn bộ khung hình đã giải nén.
 
-- Bộ cài: `%USERPROFILE%\CodexWallpaper\app`.
-- Ảnh cá nhân: `%USERPROFILE%\CodexWallpaper\images`; ảnh gốc được giữ, JPEG tối ưu tạo riêng.
-- Lựa chọn ảnh/độ mờ: `settings.json`; kiểu tích hợp: `integration.json`.
-- Trạng thái bộ nạp: `overlay-state.json`; lỗi: `overlay.log`.
-- Tác vụ `CodexWallpaperService` phục vụ thư viện trên loopback, chạy theo yêu cầu. Thư viện dùng Edge app window hoặc trình duyệt mặc định. Bộ nạp ảnh không phụ thuộc dịch vụ này.
+Bộ đếm phát dừng khi mọi cửa sổ Codex bị thu nhỏ/ẩn, khi tắt hình nền hoặc khi bạn lưu trạng thái tạm dừng. Ảnh thu nhỏ trong thư viện là ảnh tĩnh, tránh phát nhiều GIF cùng lúc. Phần xem trước phát theo tốc độ GIF gốc nên có thể khác tốc độ trong app.
 
-Dữ liệu ở thư mục UserProfile để tiến trình ngoài bản Store đọc được, tránh chuyển hướng AppData của MSIX. Dữ liệu cũ trong AppData được sao chép khi cần, không xóa bản nguồn. Ảnh không gửi lên mạng.
+Bộ lọc đọc cấu trúc theo [đặc tả GIF89a](https://www.w3.org/Graphics/GIF/spec-gif89a.txt) trước khi chuyển cho bộ giải mã Windows. Một số GIF vẫn có thể bị bộ giải mã Windows từ chối dù trình duyệt mở được. Xem [báo cáo đo thử tài nguyên](../docs/gif-performance.md) để biết phạm vi các số đo CPU/RAM đã có.
 
-## Kiểm tra
+## Cơ chế tự hiện hình nền
+
+**Ảnh phủ lên cửa sổ, kể cả chữ**; hình xem trước mô phỏng cùng độ trong suốt, nhưng màu và bố cục có thể khác app thật. Lớp ảnh cho thao tác chuột đi xuyên qua, không lấy quyền nhập liệu và không có nút riêng trên thanh tác vụ. Nó ẩn khi Codex thu nhỏ hoặc ở màn hình làm việc ảo khác. Hộp chọn tệp và cửa sổ phụ có cửa sổ sở hữu không được coi là cửa sổ chính.
+
+Bộ nạp nhận sự kiện cửa sổ qua WinEvent, kèm quét định kỳ dự phòng. Nếu Windows hủy lớp ảnh khi Codex đổi cửa sổ, bộ nạp tạo lại lớp ảnh và xử lý lỗi riêng cho từng cửa sổ. Không chèn DLL hoặc sửa gói cài Codex; chế độ Windows hiện không mở cổng gỡ lỗi của Codex.
+
+Có hai tác vụ riêng:
+
+| Tác vụ | Khi chạy | Công việc |
+| --- | --- | --- |
+| `CodexWallpaperOverlay` | Khi cài và khi đăng nhập Windows; tiếp tục chờ nếu Codex đã đóng. | Theo dõi cửa sổ và hiển thị hình nền đã lưu. |
+| `CodexWallpaperService` | Khi cần mở thư viện. | Phục vụ giao diện thư viện qua địa chỉ nội bộ; mở bằng cửa sổ ứng dụng Edge hoặc trình duyệt mặc định. |
+
+Đóng thư viện hoặc thoát Codex không dừng bộ nạp. Mở lại thư viện sẽ khởi động bộ nạp nếu đã dừng. Bộ cài giữ lối tắt thư viện đã ghim, chỉ chuyển các lối tắt Codex do bộ cài cũ đổi về ứng dụng chính thức.
+
+Nếu tệp cấu hình tạm bị khóa hoặc đang thay thế, bộ nạp giữ ảnh hiện tại tối đa hai giây trong lúc đọc lại. Lưu/khôi phục được xử lý tuần tự, thay tệp cấu hình nguyên khối và thử lại khi Windows khóa tệp trong chốc lát. Giao diện khóa thao tác thay đổi trong khi lưu, bỏ phản hồi làm mới cũ và cập nhật ảnh xem trước khi tệp cùng tên bị chép đè. Áp dụng lại GIF sẽ nạp bộ giải mã mới.
+
+## Khôi phục và xử lý lỗi
+
+**Khôi phục giao diện gốc** ẩn hình nền, giữ ảnh và GIF trong thư viện. Đặt độ hiện 0% cũng ẩn lớp ảnh.
+
+Nếu mở app gốc mà chưa thấy hình:
+
+1. Mở lại **Codex Wallpaper**, kiểm tra trạng thái trên đầu trang.
+2. Chọn hình và bấm **Áp dụng hình nền**.
+3. Nếu bộ nạp chưa chạy, chạy lại bộ cài hoặc khởi động tác vụ:
+
+```powershell
+Start-ScheduledTask -TaskName CodexWallpaperOverlay
+```
+
+Sau khi cập nhật bộ cài, dịch vụ thư viện đang chạy được khởi động lại để nạp mã mới. Trang thư viện cũ có thể giữ liên kết phiên trước; đóng trang đó và mở lại từ trình đơn Start.
+
+Xem `overlay-state.json` và `overlay.log` khi cần kiểm tra sâu hơn. Kiểu tích hợp hiện tại cần là `overlay` trong `integration.json`.
+
+## Kiểm thử
 
 ```powershell
 node --test tools/extension.test.mjs tools/windows-wallpaper.test.mjs
@@ -51,15 +99,15 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tools\windows-launcher
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tools\windows-taskbar.test.ps1
 ```
 
-Test dùng cả cửa sổ cùng tiến trình và chương trình thử ở tiến trình riêng: ba lần khởi động tiến trình, 24 vòng đóng/mở cửa sổ, thay đổi vị trí/thu nhỏ/khôi phục bằng WinEvent khi đã tắt polling, lớp ảnh bị hủy, nhiều cửa sổ, nạp lại ảnh, tọa độ, ownership, input xuyên qua và xử lý lỗi. Có trigger đăng nhập chưa thay thế kiểm thử reboot thật. Windows/Codex mới, nhiều màn hình và mức DPI khác nhau có thể cần kiểm tra thêm.
+Kiểm thử dùng cửa sổ thử riêng cùng tiến trình và ở tiến trình khác: ba lần mở tiến trình, 24 vòng đóng/mở cửa sổ, di chuyển/thu nhỏ/khôi phục qua WinEvent khi đã tắt quét định kỳ, lớp ảnh bị hủy, nhiều cửa sổ, nạp lại ảnh, tọa độ, quyền sở hữu cửa sổ, thao tác chuột xuyên qua và phục hồi sau lỗi.
 
-Kiểm thử hồi quy bổ sung: nhập trùng tên đồng thời, lưu/khôi phục đồng thời, khóa tệp Windows ngắn, dọn tệp tạm khi lưu thất bại, khôi phục JSON hỏng, GIF cùng tên được thay nội dung và 40 vòng đổi GIF/ảnh tĩnh không tích lũy GDI handle. Xem [kết quả rà soát](../docs/stability-review.md).
+Kiểm thử hồi quy bổ sung bao gồm nhập trùng tên đồng thời, lưu/khôi phục đồng thời, khóa tệp Windows ngắn, dọn tệp tạm khi lưu thất bại, khôi phục JSON hỏng, thay nội dung GIF cùng tên và 40 vòng đổi GIF/ảnh tĩnh không tích lũy tài nguyên đồ họa GDI. Xem [báo cáo rà soát](../docs/stability-review.md).
 
-Hướng này tham khảo kiến trúc fork paperfish-bot; hai fork Windows khác vẫn dùng launcher. Chi tiết và nguồn trong [khảo sát fork](../docs/windows-forks.md).
+Cấu hình tác vụ đăng nhập không thay thế kiểm tra khởi động lại máy thật. Windows/Codex mới, nhiều màn hình và mức DPI khác nhau có thể cần kiểm tra thêm. Thiết kế lớp ảnh tham khảo bản sao nhánh paperfish-bot; nguồn đối chiếu có trong [khảo sát các bản sao nhánh](../docs/windows-forks.md).
 
-## Tắt và gỡ
+## Tắt, bật lại và gỡ cài đặt
 
-Để tắt ảnh, dùng **Khôi phục giao diện gốc**. Để dừng chương trình và ngăn chạy khi đăng nhập:
+Để tắt ảnh, dùng **Khôi phục giao diện gốc**. Muốn dừng bộ nạp và ngăn chạy khi đăng nhập:
 
 ```powershell
 Stop-ScheduledTask -TaskName CodexWallpaperOverlay
@@ -73,4 +121,4 @@ Enable-ScheduledTask -TaskName CodexWallpaperOverlay
 Start-ScheduledTask -TaskName CodexWallpaperOverlay
 ```
 
-Khi gỡ, dừng/xóa hai tác vụ `CodexWallpaperOverlay`, `CodexWallpaperService`, xóa shortcut Codex Wallpaper và thư mục `app`. Giữ `images`, `gifs` và `settings.json` nếu cần ảnh/cấu hình. Không cần gỡ Codex hoặc sửa WindowsApps.
+Khi gỡ, dừng và xóa hai tác vụ `CodexWallpaperOverlay`, `CodexWallpaperService`, xóa lối tắt Codex Wallpaper và thư mục `app`. Giữ `images`, `gifs` và `settings.json` nếu muốn giữ ảnh/cấu hình. Không cần gỡ Codex hoặc sửa thư mục WindowsApps.

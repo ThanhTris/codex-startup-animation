@@ -6,15 +6,15 @@
 
 Có thể giải mã và đổi khung hình GIF bằng System.Drawing trên máy này. Bản thử đã xác minh các khung hình có pixel khác nhau. Microsoft cung cấp [ImageAnimator](https://learn.microsoft.com/en-us/dotnet/api/system.drawing.imageanimator?view=netframework-4.8.1) và [ví dụ GIF trong Windows Forms](https://learn.microsoft.com/en-us/dotnet/api/system.drawing.imageanimator.animate?view=netframework-4.8.1). Các số đo dưới đây thuộc chương trình dựng thử riêng, trước khi tích hợp GIF vào sản phẩm.
 
-Bản Windows hiện đã nhận GIF trong thư mục `gifs`, giữ nguyên dữ liệu động, giới hạn khoảng 15 FPS và dừng timer khi cửa sổ ẩn hoặc thu nhỏ. Bộ dựng chuyển khung hình sang bitmap 32-bit dùng lại trước khi co giãn, không cache toàn bộ frame. Các kiểm thử đã xác minh chuyển frame, tạm dừng, mở lại và đổi qua lại giữa ảnh tĩnh/GIF; chưa đo lại CPU/GPU của đường dựng mới với GIF người dùng. Vì vậy bảng này không đại diện cho tài nguyên của bản đã tích hợp. Xem cách dùng và giới hạn ở [hướng dẫn Windows](../windows/README.md).
+Bản Windows hiện đã nhận GIF trong thư mục `gifs`, giữ nguyên dữ liệu động, giới hạn khoảng 15 FPS và dừng bộ đếm thời gian khi cửa sổ ẩn hoặc thu nhỏ. Bộ dựng chuyển khung hình sang bitmap 32-bit dùng lại trước khi co giãn, không lưu sẵn toàn bộ khung hình. Các kiểm thử đã xác minh chuyển khung hình, tạm dừng, mở lại và đổi qua lại giữa ảnh tĩnh/GIF; chưa đo lại CPU/GPU của đường dựng mới với GIF người dùng. Vì vậy bảng này không đại diện cho tài nguyên của bản đã tích hợp. Xem cách dùng và giới hạn ở [hướng dẫn Windows](../windows/README.md).
 
 ## Phương pháp và phạm vi
 
 - Hai GIF tổng hợp 24 khung hình: 1280×720 (~4,21 MiB) và 1920×1080 (~11,40 MiB), mỗi khung 30 ms, hình học và màu thay đổi toàn khung. Không dùng ảnh cá nhân hoặc GIF tải từ mạng.
-- Tiến trình thử riêng giữ dữ liệu GIF, chọn frame theo thời gian rồi vẽ vào bitmap **1920×1080 trong bộ nhớ**. Kiểu HighQualityBicubic tương ứng với cách co giãn hiện dùng trong OnPaint; Bilinear là một phương án so sánh.
+- Tiến trình thử riêng giữ dữ liệu GIF, chọn khung hình theo thời gian rồi vẽ vào bitmap **1920×1080 trong bộ nhớ**. Kiểu HighQualityBicubic tương ứng với cách co giãn hiện dùng trong OnPaint; Bilinear là một phương án so sánh.
 - Mỗi trường hợp chạy hai lần, mỗi lần đo 6 giây sau 1 giây làm nóng. Mỗi lần dùng tiến trình mới. CPU lấy từ TotalProcessorTime, chia cho thời gian thực và 8 bộ xử lý logic, gần cách tính phần trăm CPU toàn máy. 12,5% tương đương sử dụng hết một bộ xử lý logic.
 - RAM là Working Set của riêng chương trình thử, chưa cộng vào/không đại diện cho toàn bộ Codex. Đỉnh RAM là PeakWorkingSet từ lúc tiến trình bắt đầu, gồm khởi tạo.
-- FPS là số lần dựng frame trong bộ nhớ, **không phải FPS hiển thị trên màn hình**. Chưa đo GPU, Desktop Window Manager, chuyển bitmap lên lớp cửa sổ trong suốt, điện năng, pin hoặc độ mượt quan sát trực tiếp.
+- FPS là số lần dựng khung hình trong bộ nhớ, **không phải FPS hiển thị trên màn hình**. Chưa đo GPU, Desktop Window Manager, chuyển bitmap lên lớp cửa sổ trong suốt, điện năng, pin hoặc độ mượt quan sát trực tiếp.
 
 ## Số đo
 
@@ -33,25 +33,25 @@ Giới hạn thời gian mỗi khung là 66,7 ms ở 15 FPS và 33,3 ms ở 30 F
 
 Đo riêng bộ nạp **ảnh tĩnh thật đang chạy** trong một khoảng 6 giây: ~0,19% CPU toàn máy, Working Set ~25,1 MiB và Private Bytes ~40,3 MiB. Working Set thay đổi theo việc Windows thu hồi trang bộ nhớ; không nên so sánh nó như một phép đo tăng RAM chính xác giữa hai sản phẩm khác nhau.
 
-Tạm dừng GIF không đồng nghĩa giải phóng RAM: mẫu GIF 1080p vẫn giữ ~70,5 MiB, dù phần CPU của tiến trình thử về gần 0. Một file GIF khác có thể dùng bộ nhớ rất khác. Nếu giải nén sẵn toàn bộ 24 frame 1080p thành RGBA 32-bit, riêng dữ liệu pixel đã khoảng **190 MiB**; không nên cache mọi frame vô hạn.
+Tạm dừng GIF không đồng nghĩa giải phóng RAM: mẫu GIF 1080p vẫn giữ ~70,5 MiB, dù phần CPU của tiến trình thử về gần 0. Một file GIF khác có thể dùng bộ nhớ rất khác. Nếu giải nén sẵn toàn bộ 24 khung hình 1080p thành RGBA 32-bit, riêng dữ liệu pixel đã khoảng **190 MiB**; không nên lưu vô hạn mọi khung hình.
 
 ## Các điểm rút ra khi tích hợp
 
-1. Nhận và kiểm tra GIF thật ở server; giữ dữ liệu động thay vì chuyển thành JPEG. Bổ sung preview và đường khôi phục.
-2. Giữ decoder cùng luồng dữ liệu sống đúng vòng đời ảnh; xử lý thời gian từng frame, vòng lặp, frame disposal và đổi ảnh khi đang chạy.
+1. Nhận và kiểm tra GIF thật ở máy chủ thư viện; giữ dữ liệu động thay vì chuyển thành JPEG. Bổ sung phần xem trước và cách khôi phục giao diện.
+2. Giữ bộ giải mã cùng luồng dữ liệu đúng vòng đời ảnh; xử lý thời gian từng khung hình, vòng lặp, cách xóa/giữ khung hình cũ và đổi ảnh khi đang chạy.
 3. Bắt đầu với giới hạn khoảng 15 FPS. Tránh co giãn GIF bảng màu trực tiếp ở mọi khung; bản tích hợp dùng bitmap 32-bit trung gian. Cần đo lại đường dựng này trước khi so sánh hiệu năng.
-4. Chỉ chạy khi cửa sổ cần hiện; dừng frame timer khi thu nhỏ/ẩn/khôi phục giao diện. Giới hạn kích thước, số frame và ngân sách bộ nhớ giải mã, không chỉ dung lượng file.
+4. Chỉ chạy khi cửa sổ cần hiện; dừng bộ đếm khung hình khi thu nhỏ/ẩn/khôi phục giao diện. Giới hạn kích thước, số khung hình và ngân sách bộ nhớ giải mã, không chỉ dung lượng file.
 5. Đo lại bằng GIF người dùng muốn dùng, trong lớp ảnh thật, gồm CPU của tiến trình, RAM theo thời gian và DWM/GPU; chưa có cơ sở đưa số phần trăm GPU hoặc mức hao pin.
 
 ## Tái lập và dữ liệu
 
-Mã: \tools\gif-fixtures.py, \tools\gif-benchmark.cs, \tools\gif-benchmark.ps1. Script dùng Pillow/numpy từ Python runtime có sẵn của Codex, không cài thêm package.
+Mã: [tạo GIF thử](../tools/gif-fixtures.py), [chương trình đo](../tools/gif-benchmark.cs) và [tập lệnh chạy phép đo](../tools/gif-benchmark.ps1). Tập lệnh dùng Pillow/numpy từ môi trường Python có sẵn của Codex trên máy đã đo, không cài thêm gói phụ thuộc.
 
 Dữ liệu thô trên máy này:
 
 - `%USERPROFILE%\CodexWallpaper\research\gif-benchmark-fa731935e8d24607a893e92138a52aef\results.json`
 - `%USERPROFILE%\CodexWallpaper\research\gif-benchmark-bd72a9263e3d4d3cad70f51fbbee5764\results.json`
 
-Các file kết quả thô này chỉ nằm trên máy đã đo, không được đính kèm trong repository.
+Các file kết quả thô này chỉ nằm trên máy đã đo, không được đính kèm trong kho mã nguồn.
 
 Các số đo ngắn trong điều kiện tải máy hiện tại không thay thế kiểm thử dài hạn, kiểm tra GPU/hiển thị hoặc thử GIF thực tế.
