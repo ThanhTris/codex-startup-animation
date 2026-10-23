@@ -11,6 +11,7 @@ Dự án do [ThanhTris](https://github.com/ThanhTris/codex-startup-animation) ph
 | Thư viện ảnh cá nhân | Thêm PNG, JPEG, WebP hoặc GIF bằng nút chọn tệp, kéo thả hoặc chép vào thư mục riêng. |
 | Phân loại ảnh | Lọc **Tất cả**, **Ảnh tĩnh** và **GIF**; có nút mở từng thư mục. |
 | Xem trước giao diện | Mô phỏng lớp ảnh phủ lên Codex trước khi áp dụng. |
+| Căn và cắt vùng hiển thị | Kéo ảnh, phóng/thu 25–400%, chọn phủ kín khung hoặc hiện toàn bộ ảnh; giữ nguyên ảnh/GIF gốc. |
 | Chỉnh độ đậm nhạt | Điều chỉnh từ 0–75%, có mức chọn nhanh 15%, 25% và 35%. |
 | Đổi hình nền khi đang dùng | Bấm **Áp dụng hình nền** để lưu lựa chọn và cập nhật cửa sổ Codex đang mở. |
 | Tự hiện khi mở app gốc | Bộ nạp chạy nền nhận diện cửa sổ Codex; không cần mở thư viện mỗi lần dùng. |
@@ -49,6 +50,8 @@ Kho mã nguồn chứa mã để tự biên dịch; không cần sử dụng ả
 5. Đóng thư viện. Từ lần sau, mở **biểu tượng Codex/ChatGPT gốc của gói Codex** như bình thường; bộ nạp sẽ tự hiện lựa chọn đã lưu.
 
 Nút **Mở Codex** trong thư viện chỉ giúp mở ứng dụng gốc cho tiện kiểm tra. Bạn không phải bấm nút này mỗi lần sử dụng. Nút **Khôi phục giao diện gốc** tắt hình nền mà không xóa thư viện.
+
+Muốn chọn vùng ảnh, bấm **Căn / cắt ảnh** dưới phần xem trước. Kéo ảnh trong khung, chỉnh độ phóng hoặc vị trí ngang/dọc; chọn **Phủ kín khung** để lấp đầy hoặc **Hiện toàn bộ ảnh** để tránh mất nội dung. Có khung xem thử theo màn hình, 16:9, 16:10, 21:9 và 4:3. Bấm **Xong** rồi **Áp dụng hình nền** để lưu. Khung xem thử không đổi kích thước Codex: khi cửa sổ thay đổi, chương trình giữ cách căn và độ phóng theo tỷ lệ. Vùng trống khi thu nhỏ dùng nền tối. Với GIF, phần căn ảnh dùng ảnh tĩnh để dễ chỉnh; GIF vẫn chuyển động khi áp dụng.
 
 ## Thư mục dữ liệu
 

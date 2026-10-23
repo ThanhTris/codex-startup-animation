@@ -82,6 +82,12 @@ namespace CodexWallpaper {
                 Native.DpiAware();Application.EnableVisualStyles();
                 if(args[0]=="--fixture")return RunFixture();
                 string root=args[0];
+                var defaultCrop=CropSettings.Parse(null);
+                Assert(defaultCrop.Bounds(100,100,1600,900)==new RectangleF(0,-350,1600,1600),"old configs keep centered cover crop");
+                var customCrop=CropSettings.Parse(new Dictionary<string,object>{{"fit","contain"},{"zoom",.5},{"x",0},{"y",1}});
+                Assert(customCrop.Bounds(100,100,1600,900)==new RectangleF(0,450,450,450),"native crop matches preview fit, zoom and edge alignment");
+                var invalidCrop=CropSettings.Parse(new Dictionary<string,object>{{"zoom",100},{"x",-1},{"y",Double.NaN}});
+                Assert(invalidCrop.Zoom==4&&invalidCrop.X==0&&invalidCrop.Y==.5,"native crop clamps unsafe settings");
                 Directory.CreateDirectory(Path.Combine(root,"images"));
                 using(var image=new Bitmap(40,30)) {using(var g=Graphics.FromImage(image))g.Clear(Color.Red);image.Save(Path.Combine(root,"images","red.png"));}
                 using(var image=new Bitmap(40,30)) {using(var g=Graphics.FromImage(image))g.Clear(Color.Blue);image.Save(Path.Combine(root,"images","blue.png"));}

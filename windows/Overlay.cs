@@ -117,7 +117,25 @@ namespace CodexWallpaper {
         public void Dispose() {clock.Stop();if(graphics!=null)graphics.Dispose();if(Frame!=null)Frame.Dispose();if(Source!=null)Source.Dispose();if(stream!=null)stream.Dispose();}
     }
 
+    internal sealed class CropSettings {
+        internal string Fit="cover";
+        internal double Zoom=1, X=.5, Y=.5;
+        private static double Read(Dictionary<string,object> data,string key,double fallback,double min,double max) {
+            object value;if(data==null||!data.TryGetValue(key,out value)||!(value is int||value is long||value is double||value is decimal))return fallback;
+            double number=Convert.ToDouble(value);return Double.IsNaN(number)||Double.IsInfinity(number)?fallback:Math.Max(min,Math.Min(max,number));
+        }
+        internal static CropSettings Parse(object value) {
+            var data=value as Dictionary<string,object>;object fit;
+            return new CropSettings {Fit=data!=null&&data.TryGetValue("fit",out fit)&&Object.Equals(fit,"contain")?"contain":"cover",Zoom=Read(data,"zoom",1,.25,4),X=Read(data,"x",.5,0,1),Y=Read(data,"y",.5,0,1)};
+        }
+        internal RectangleF Bounds(int iw,int ih,int w,int h) {
+            double scale=(Fit=="contain"?Math.Min((double)w/iw,(double)h/ih):Math.Max((double)w/iw,(double)h/ih))*Zoom;
+            double width=iw*scale,height=ih*scale;
+            return new RectangleF((float)((w-width)*X),(float)((h-height)*Y),(float)width,(float)height);
+        }
+    }
     internal sealed class WallpaperSettings : IDisposable {
+        internal CropSettings Crop=new CropSettings();
         internal Bitmap Image;
         internal double Opacity;
         internal string Name="", Error="";
@@ -178,6 +196,7 @@ namespace CodexWallpaper {
                             if((long)decoded.Width*decoded.Height>40000000)throw new InvalidDataException("Image exceeds 40 megapixels.");next=new Bitmap(decoded);
                         }
                 }
+                object rawCrop;Crop=CropSettings.Parse(data!=null&&data.TryGetValue("crop",out rawCrop)?rawCrop:null);
                 ReleaseImage();Image=next;animation=nextAnimation;Paused=paused;Opacity=next==null?0:strength/100;Name=name;lastText=text;Error="";
                 return true;
             } catch(Exception error) {
@@ -225,11 +244,8 @@ namespace CodexWallpaper {
             base.OnPaint(e);
             Bitmap image=settings.DisplayImage;
             if(image==null||ClientSize.Width<=0||ClientSize.Height<=0)return;
-            double scale=Math.Max((double)ClientSize.Width/image.Width,(double)ClientSize.Height/image.Height);
-            float width=(float)(ClientSize.Width/scale),height=(float)(ClientSize.Height/scale);
-            var source=new RectangleF((image.Width-width)/2,(image.Height-height)/2,width,height);
             e.Graphics.InterpolationMode=InterpolationMode.HighQualityBicubic;
-            e.Graphics.DrawImage(image,ClientRectangle,source,GraphicsUnit.Pixel);
+            e.Graphics.DrawImage(image,settings.Crop.Bounds(image.Width,image.Height,ClientSize.Width,ClientSize.Height),new RectangleF(0,0,image.Width,image.Height),GraphicsUnit.Pixel);
         }
         internal void UpdateForTarget(bool changed) {
             Rectangle rect=Native.ClientBounds(Target);
@@ -337,7 +353,7 @@ namespace CodexWallpaper {
             string transition=status+" targets="+Layers.Count+" visible="+visible+" image="+Settings.Name+" opacity="+Settings.Opacity;
             if(transition!=lastTransition){Log(transition);lastTransition=transition;}
             string message=status=="error"?"Bộ nạp đang thử khôi phục: "+error:status=="disabled"?"Hình nền đã tắt. Ảnh cá nhân vẫn được giữ trong thư viện.":status=="applied"?"Lớp ảnh đã hiện trên Codex. Lần sau mở app gốc, ảnh sẽ tự hiện.":"Bộ nạp đang chạy. Ảnh sẽ tự hiện khi cửa sổ Codex được mở hoặc khôi phục.";
-            var state=new {mode="overlay",rendererVersion=3,status=status,message=message,pid=Process.GetCurrentProcess().Id,updatedAt=DateTime.UtcNow.ToString("o"),targetWindows=Layers.Count,visibleOverlays=visible,recoveries=recoveries,eventHooks=events!=null&&events.Active,kind=Settings.IsGif?"gif":"image",animationRunning=animationTimer.Enabled,animationFpsLimit=15,paused=Settings.Paused,strength=Settings.Opacity*100,image=Settings.Name};
+            var state=new {mode="overlay",rendererVersion=4,status=status,message=message,pid=Process.GetCurrentProcess().Id,updatedAt=DateTime.UtcNow.ToString("o"),targetWindows=Layers.Count,visibleOverlays=visible,recoveries=recoveries,eventHooks=events!=null&&events.Active,kind=Settings.IsGif?"gif":"image",animationRunning=animationTimer.Enabled,animationFpsLimit=15,paused=Settings.Paused,strength=Settings.Opacity*100,image=Settings.Name};
             string temporary=Path.Combine(root,"overlay-state-"+Guid.NewGuid()+".tmp"),target=Path.Combine(root,"overlay-state.json");
             try { File.WriteAllText(temporary,new JavaScriptSerializer().Serialize(state),new UTF8Encoding(false)); if(File.Exists(target))File.Replace(temporary,target,null);else File.Move(temporary,target); }
             finally { if(File.Exists(temporary))File.Delete(temporary); }

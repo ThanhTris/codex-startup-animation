@@ -1,9 +1,11 @@
 const token=new URLSearchParams(location.search).get('token');
 if(!token||!/^[a-f\d]{48}$/.test(token))throw new Error('Liên kết thư viện không hợp lệ.');
+const {normalizeCrop,cropRect}=await import('/crop.mjs?token='+token);
 const $=selector=>document.querySelector(selector);
 const gallery=$('#gallery'),applyButton=$('#apply'),strength=$('#strength'),preview=$('#preview'),previewImage=$('#preview-image');
 let images=[],selected='',filter='all',saved={},paused=false,busy=false,toastTimer,signature='',previewKey='',loadVersion=0,pendingLoads=0;
 const posters=new Map();
+const cropDrafts=new Map();let crop=normalizeCrop(),cropSelection='';
 async function api(path,options={}){
   const response=await fetch(path,{signal:AbortSignal.timeout(30000),...options,headers:{Authorization:`Bearer ${token}`,...options.headers}});
   const value=await response.json().catch(()=>({error:'Phản hồi không hợp lệ.'}));
@@ -15,7 +17,7 @@ const mediaKey=image=>`${image.id}:${image.revision||''}`;
 const sizeText=size=>size<1048576?`${Math.round(size/1024)} KB`:`${(size/1048576).toFixed(1)} MB`;
 const chosen=()=>images.find(image=>image.id===selected);
 function say(text,error=false){clearTimeout(toastTimer);$('#status').textContent=text;$('#status').classList.toggle('error',error);$('#status').hidden=false;toastTimer=setTimeout(()=>{$('#status').hidden=true;},error?9000:5500);}
-function isSaved(image){return saved.enabled&&image&&image.name===saved.name&&image.kind===(saved.kind||'image')&&Number(strength.value)===saved.strength&&(image.kind!=='gif'||paused===saved.paused);}
+function isSaved(image){return saved.enabled&&image&&image.name===saved.name&&image.kind===(saved.kind||'image')&&Number(strength.value)===saved.strength&&(image.kind!=='gif'||paused===saved.paused)&&JSON.stringify(crop)===JSON.stringify(normalizeCrop(saved.crop));}
 async function poster(image){
   if(image.kind!=='gif')return source(image);
   const key=mediaKey(image);if(posters.has(key))return posters.get(key);
@@ -27,6 +29,7 @@ async function poster(image){
 }
 function update(){
   const image=chosen(),value=Number(strength.value);
+  if(cropSelection!==selected){cropSelection=selected;crop=normalizeCrop(cropDrafts.get(selected)||(image?.name===saved.name&&image?.kind===(saved.kind||'image')?saved.crop:null));}
   $('#strength-value').innerHTML=`${value}<span>%</span>`;preview.style.setProperty('--preview-opacity',String(value/100));
   document.querySelectorAll('[data-strength]').forEach(button=>button.classList.toggle('active',Number(button.dataset.strength)===value));
   $('#preview-empty').hidden=!!image;$('#preview-play').hidden=!image||image.kind!=='gif';
@@ -37,11 +40,13 @@ function update(){
   $('#selection-state').textContent=!image?'Chọn ảnh hoặc GIF để bắt đầu':isSaved(image)?'Đã lưu · tự hiện khi mở Codex':`Chưa áp dụng · ${sizeText(image.size)}${image.kind==='gif'?` · ${image.frames} khung hình`:''}`;
   applyButton.disabled=!image||busy;
   document.querySelectorAll('#restore,#files,#refresh,#preview-play,#strength,[data-strength],[data-filter],.card').forEach(control=>control.disabled=busy);
+  $('#crop-open').disabled=busy||!image;
   const nextKey=image?`${mediaKey(image)}:${paused}:${document.hidden}`:'';
   if(nextKey!==previewKey){previewKey=nextKey;previewImage.removeAttribute('src');
     if(image){if(image.kind==='gif'&&(paused||document.hidden)){poster(image).then(url=>{if(previewKey===nextKey)previewImage.src=url;}).catch(error=>say(error.message,true));}else previewImage.src=source(image);}
   }
   gallery.querySelectorAll('.card').forEach(card=>card.setAttribute('aria-pressed',String(card.dataset.id===selected)));
+  paintCrop();
 }
 function renderGallery(){
   const visible=images.filter(image=>filter==='all'||image.kind===filter);gallery.replaceChildren();gallery.hidden=visible.length===0;
@@ -108,7 +113,7 @@ async function openFolder(kind){try{await post('/api/open-folder',{kind});}catch
 $('#folder').addEventListener('click',()=>openFolder('image'));$('#gif-folder').addEventListener('click',()=>openFolder('gif'));$('#empty-folder').addEventListener('click',()=>openFolder(filter==='gif'?'gif':'image'));
 applyButton.addEventListener('click',async()=>{
   const image=chosen();if(!image||busy)return;busy=true;loadVersion++;update();applyButton.querySelector('span').textContent='Đang lưu…';
-  try{const payload={name:image.name,kind:image.kind,strength:Number(strength.value),paused};if(image.kind!=='gif')payload.optimized=await optimize(image);const result=await post('/api/apply',payload);saved=result.settings;renderGallery();say('Đã lưu. Bộ nạp sẽ cập nhật hình nền trên Codex.');}
+  try{const payload={name:image.name,kind:image.kind,strength:Number(strength.value),paused,crop:{...crop}};if(image.kind!=='gif')payload.optimized=await optimize(image);const result=await post('/api/apply',payload);saved=result.settings;renderGallery();say('Đã lưu. Bộ nạp sẽ cập nhật hình nền trên Codex.');}
   catch(error){say(error.message,true);}finally{busy=false;applyButton.querySelector('span').textContent='Áp dụng hình nền';update();}
 });
 $('#restore').addEventListener('click',async()=>{if(busy)return;busy=true;loadVersion++;update();try{await post('/api/restore');saved={enabled:false};renderGallery();say('Đã khôi phục giao diện gốc. Thư viện của bạn vẫn được giữ.');}catch(error){say(error.message,true);}finally{busy=false;update();}});
@@ -121,4 +126,34 @@ document.addEventListener('drop',event=>{event.preventDefault();$('#dropzone').c
 document.addEventListener('visibilitychange',()=>{update();if(!document.hidden){if(!busy)load();refreshRuntime();}});
 window.addEventListener('beforeunload',()=>{for(const promise of posters.values())promise.then(url=>URL.revokeObjectURL(url)).catch(()=>{});});
 setInterval(()=>{if(!document.hidden)refreshRuntime();},2000);setInterval(()=>{if(!document.hidden&&!busy&&!pendingLoads)load();},5000);
+function placeImage(img,frame){
+  const rect=cropRect(img.naturalWidth,img.naturalHeight,frame.clientWidth,frame.clientHeight,crop);
+  Object.assign(img.style,{width:rect.width+'px',height:rect.height+'px',left:rect.x+'px',top:rect.y+'px',right:'auto',bottom:'auto'});
+}
+function paintCrop(){
+  placeImage(previewImage,preview);
+  if($('#crop-dialog').open){placeImage($('#crop-image'),$('#crop-stage'));$('#crop-zoom').value=String(crop.zoom*100);$('#crop-zoom-value').value=Math.round(crop.zoom*100)+'%';$('#crop-x').value=String(crop.x*100);$('#crop-y').value=String(crop.y*100);$('#crop-cover').setAttribute('aria-pressed',String(crop.fit==='cover'));$('#crop-contain').setAttribute('aria-pressed',String(crop.fit==='contain'));}
+}
+function editCrop(next){crop=normalizeCrop({...crop,...next});cropDrafts.set(selected,crop);update();}
+previewImage.addEventListener('load',paintCrop);$('#crop-image').addEventListener('load',paintCrop);
+new ResizeObserver(paintCrop).observe(preview);new ResizeObserver(paintCrop).observe($('#crop-stage'));
+function ratioChanged(){const value=$('#crop-ratio').value,ratio=value==='screen'?screen.width/screen.height:Number(value);$('#crop-stage').style.aspectRatio=String(ratio);$('#crop-stage').style.setProperty('--crop-ratio',String(ratio));paintCrop();}
+$('#crop-open').addEventListener('click',async()=>{
+  const image=chosen();if(!image||busy)return;
+  // An independent still frame keeps GIF editing precise and inexpensive.
+  try{const url=await poster(image);if(chosen()?.id!==image.id||busy)return;$('#crop-image').src=url;$('#crop-dialog').showModal();ratioChanged();paintCrop();}catch(error){say(error.message,true);}
+});
+$('#crop-close').addEventListener('click',()=>$('#crop-dialog').close());
+$('#crop-dialog').addEventListener('close',()=>$('#crop-image').removeAttribute('src'));
+$('#crop-ratio').addEventListener('change',ratioChanged);
+$('#crop-zoom').addEventListener('input',event=>editCrop({zoom:Number(event.target.value)/100}));
+$('#crop-x').addEventListener('input',event=>editCrop({x:Number(event.target.value)/100}));
+$('#crop-y').addEventListener('input',event=>editCrop({y:Number(event.target.value)/100}));
+$('#crop-cover').addEventListener('click',()=>editCrop({fit:'cover',zoom:1}));
+$('#crop-contain').addEventListener('click',()=>editCrop({fit:'contain',zoom:1}));
+$('#crop-reset').addEventListener('click',()=>editCrop(normalizeCrop()));
+let cropDrag=null;
+$('#crop-stage').addEventListener('pointerdown',event=>{if(event.button!==0||!$('#crop-image').naturalWidth)return;const stage=$('#crop-stage'),rect=cropRect($('#crop-image').naturalWidth,$('#crop-image').naturalHeight,stage.clientWidth,stage.clientHeight,crop);cropDrag={pointer:event.pointerId,px:event.clientX,py:event.clientY,x:crop.x,y:crop.y,dx:stage.clientWidth-rect.width,dy:stage.clientHeight-rect.height};stage.setPointerCapture(event.pointerId);event.preventDefault();});
+$('#crop-stage').addEventListener('pointermove',event=>{if(!cropDrag||event.pointerId!==cropDrag.pointer)return;editCrop({x:Math.abs(cropDrag.dx)>1?cropDrag.x+(event.clientX-cropDrag.px)/cropDrag.dx:crop.x,y:Math.abs(cropDrag.dy)>1?cropDrag.y+(event.clientY-cropDrag.py)/cropDrag.dy:crop.y});});
+for(const name of ['pointerup','pointercancel','lostpointercapture'])$('#crop-stage').addEventListener(name,()=>{cropDrag=null;});
 load(true);refreshRuntime();

@@ -9,7 +9,18 @@ import {imageMime,gifInfo,safeImageName,wallpaperInjection,readWallpaperConfig} 
 import {startLibrary} from '../windows/server.mjs';
 import {readRuntime} from '../windows/runtime.mjs';
 import {readSettings,writeSettings} from '../windows/settings.mjs';
+import {normalizeCrop,cropRect} from '../windows/crop.mjs';
 const gif=Buffer.from('R0lGODlhBAAEAIEAAP8AAAAAAAAAAAAAACH/C05FVFNDQVBFMi4wAwEAAAAh+QQAGQAAACwAAAAABAAEAAAICQABCBxIsCCAgAAh+QQBGQABACwAAAAABAAEAIEAAP8AAAAAAAAAAAAICQABCBxIsCCAgAA7','base64');
+
+test('crop geometry preserves aspect ratio, supports fit, zoom, edges and old settings',()=>{
+  assert.deepEqual(normalizeCrop(),{fit:'cover',zoom:1,x:.5,y:.5});
+  assert.deepEqual(normalizeCrop({fit:'invalid',zoom:Infinity,x:-20,y:2}),{fit:'cover',zoom:1,x:0,y:1});
+  assert.deepEqual(cropRect(100,100,1600,900),{x:0,y:-350,width:1600,height:1600});
+  assert.deepEqual(cropRect(100,100,1600,900,{fit:'contain'}),{x:350,y:0,width:900,height:900});
+  assert.deepEqual(cropRect(100,100,1600,900,{zoom:2,x:1,y:0}),{x:-1600,y:0,width:3200,height:3200});
+  assert.deepEqual(cropRect(100,100,1600,900,{fit:'contain',zoom:.5,x:0,y:1}),{x:0,y:450,width:450,height:450});
+  assert.deepEqual(cropRect(0,0,1600,900),{x:0,y:0,width:0,height:0});
+});
 
 test('concurrent imports and appearance changes preserve the final image without orphan files',async()=>{
   const root=await mkdtemp(join(tmpdir(),'codex-concurrent-')),active=await startLibrary({root,open:false});
@@ -75,12 +86,15 @@ test('GIF folder is listed and animated bytes survive apply, restart and restore
     const page=await fetch(active.url);assert.match(page.headers.get('content-security-policy'),/img-src 'self' blob:/);
     const items=await (await fetch(url.origin+'/api/images',{headers})).json();assert.equal(items.images[0].id,'gif:mine.gif');assert.equal(items.images[0].frames,2);
     assert.deepEqual(Buffer.from(await (await fetch(url.origin+items.images[0].url,{headers})).arrayBuffer()),gif);
-    const applied=await fetch(url.origin+'/api/apply',{method:'POST',headers,body:JSON.stringify({name:'mine.gif',kind:'gif',strength:20,paused:true})});assert.equal(applied.status,200);
+    const crop={fit:'contain',zoom:1.75,x:.2,y:.8};
+    const applied=await fetch(url.origin+'/api/apply',{method:'POST',headers,body:JSON.stringify({name:'mine.gif',kind:'gif',strength:20,paused:true,crop})});assert.equal(applied.status,200);
+    assert.deepEqual((await readSettings(root)).crop,crop);
     const settings=JSON.parse(await readFile(join(root,'settings.json'),'utf8'));assert.equal(settings.kind,'gif');assert.equal(settings.paused,true);assert.equal(settings.renderedName,'mine.gif');assert.deepEqual(await readFile(join(root,'gifs','mine.gif')),gif);
-    await fetch(url.origin+'/api/apply',{method:'POST',headers,body:JSON.stringify({name:'mine.gif',kind:'gif',strength:20,paused:true})});
+    await fetch(url.origin+'/api/apply',{method:'POST',headers,body:JSON.stringify({name:'mine.gif',kind:'gif',strength:20,paused:true,crop})});
     assert.notEqual((await readSettings(root)).revision,settings.revision,'applying an overwritten GIF with the same filename forces the native decoder to reload');
     await new Promise(resolve=>active.server.close(resolve));active=await startLibrary({root,open:false});url=new URL(active.url);headers={Authorization:`Bearer ${url.searchParams.get('token')}`,'Content-Type':'application/json'};
-    const fresh=await(await fetch(url.origin+'/api/settings',{headers})).json();assert.equal(fresh.kind,'gif');assert.equal(fresh.name,'mine.gif');assert.equal(fresh.paused,true);
+    const fresh=await(await fetch(url.origin+'/api/settings',{headers})).json();assert.equal(fresh.kind,'gif');assert.equal(fresh.name,'mine.gif');assert.equal(fresh.paused,true);assert.deepEqual(fresh.crop,crop);
+    const module=await fetch(url.origin+'/crop.mjs?token='+url.searchParams.get('token'));assert.equal(module.status,200);assert.match(module.headers.get('content-type'),/javascript/);
     const bad=await fetch(url.origin+'/api/import',{method:'POST',headers,body:JSON.stringify({name:'bad.gif',data:gif.subarray(0,20).toString('base64')})});assert.equal(bad.status,400);
     assert.equal((await fetch(url.origin+'/api/restore',{method:'POST',headers})).status,200);assert.deepEqual(await readFile(join(root,'gifs','mine.gif')),gif);
   }finally{await new Promise(resolve=>active.server.close(resolve));await rm(root,{recursive:true,force:true});}

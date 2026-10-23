@@ -9,11 +9,13 @@ import {imageMime,gifInfo,MAX_IMAGE_BYTES,safeImageName} from './wallpaper.mjs';
 import {readRuntime} from './runtime.mjs';
 import {mediaKind,mediaFolder,readMedia} from './media.mjs';
 import {readSettings,writeSettings} from './settings.mjs';
+import {normalizeCrop} from './crop.mjs';
 
 const here=fileURLToPath(new URL('.',import.meta.url));
 const html=await readFile(join(here,'manager.html'));
 const script=await readFile(join(here,'manager.js'));
 const css=await readFile(join(here,'manager.css'));
+const cropScript=await readFile(join(here,'crop.mjs'));
 const MAX_BODY=Math.ceil(MAX_IMAGE_BYTES*1.42)+1024;
 function reply(res,status,body,type='application/json; charset=utf-8'){
   res.writeHead(status,{'Content-Type':type,'X-Content-Type-Options':'nosniff','Cache-Control':'no-store','Referrer-Policy':'no-referrer','Content-Security-Policy':"default-src 'self'; img-src 'self' blob:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'"});res.end(type.startsWith('application/json')?JSON.stringify(body):body);
@@ -68,6 +70,9 @@ export async function startLibrary({root,open:shouldOpen=true}={}){
       if(req.method==='GET'&&url.pathname==='/manager.js'){
         reply(res,200,script,'text/javascript; charset=utf-8');return;
       }
+      if(req.method==='GET'&&url.pathname==='/crop.mjs'){
+        reply(res,200,cropScript,'text/javascript; charset=utf-8');return;
+      }
       if(req.method==='GET'&&url.pathname==='/manager.css'){
         reply(res,200,css,'text/css; charset=utf-8');return;
       }
@@ -89,7 +94,7 @@ export async function startLibrary({root,open:shouldOpen=true}={}){
       if(req.method==='GET'&&url.pathname==='/api/settings'){
         const value=await readSettings(root);
         const strength=Number(value.strength);
-        reply(res,200,{enabled:value.enabled===true,name:typeof value.name==='string'?value.name:'',kind:mediaKind(value.kind),paused:value.paused===true,strength:Math.max(0,Math.min(75,Number.isFinite(strength)?strength:35))});return;
+        reply(res,200,{enabled:value.enabled===true,name:typeof value.name==='string'?value.name:'',kind:mediaKind(value.kind),paused:value.paused===true,crop:normalizeCrop(value.crop),strength:Math.max(0,Math.min(75,Number.isFinite(strength)?strength:35))});return;
       }
       if(req.method==='GET'&&(url.pathname.startsWith('/images/')||url.pathname.startsWith('/gifs/'))){
         const kind=url.pathname.startsWith('/gifs/')?'gif':'image',name=safeImageName(decodeURIComponent(url.pathname.slice(kind==='gif'?6:8))),image=await readMedia(root,kind,name);
@@ -115,7 +120,7 @@ export async function startLibrary({root,open:shouldOpen=true}={}){
         const previous=await readSettings(root);
         const renderedName=kind==='gif'?name:`.codex-wallpaper-${randomUUID()}.jpg`;
         const requestedStrength=Number(data.strength),strength=Math.max(0,Math.min(75,Math.round(Number.isFinite(requestedStrength)?requestedStrength:35)));
-        const settings={version:2,revision:randomUUID(),enabled:true,kind,name:image.name,renderedName,strength,paused:kind==='gif'&&data.paused===true};
+        const settings={version:3,revision:randomUUID(),enabled:true,kind,name:image.name,renderedName,strength,paused:kind==='gif'&&data.paused===true,crop:normalizeCrop(data.crop)};
         try{if(optimized)await writeFile(join(library,renderedName),optimized,{flag:'wx'});await writeSettings(root,settings);}catch(error){if(optimized)await unlink(join(library,renderedName)).catch(()=>{});throw error;}
         await cleanRendered(previous);return settings;
         });

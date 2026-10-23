@@ -4,7 +4,7 @@
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Codex Wallpaper</title>
   <link rel="stylesheet" href="/manager.css?token=__TOKEN__">
-  <script defer src="/manager.js?token=__TOKEN__"></script>
+  <script type="module" src="/manager.js?token=__TOKEN__"></script>
 </head>
 <body>
   <svg class="sprite" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs>
@@ -42,9 +42,10 @@
               <div class="mock-codex">
                 <aside class="mock-sidebar"><div class="mock-brand">✳ <b>Codex</b><span>⌄</span></div><div class="mock-new">＋ &nbsp; Cuộc trò chuyện mới</div><div class="mock-section-title">DỰ ÁN</div><div class="mock-thread">▱ &nbsp; Không gian làm việc</div><div class="mock-thread active">✦ &nbsp; Một ý tưởng mới</div><div class="mock-thread">◷ &nbsp; Review giao diện</div><div class="mock-sidebar-bottom"><span class="mock-avatar">U</span><span>Không gian của bạn</span><span>•••</span></div></aside>
                 <section class="mock-main"><header class="mock-topbar"><span>▱ &nbsp; Một ý tưởng mới</span><span>•••</span></header><div class="mock-chat"><div class="mock-user-message">Cùng bắt đầu một điều thú vị nhé.</div><div class="mock-response"><span class="mock-spark">✳</span><div><strong>Mọi thứ đã sẵn sàng.</strong><p>Một không gian quen thuộc, với một chút cảm hứng của riêng bạn.</p><div class="mock-code-line"><span class="code-dot"></span> Sẵn sàng cho ý tưởng tiếp theo</div></div></div></div><div class="mock-composer"><span>Bạn muốn làm gì hôm nay?</span><div><span>＋ &nbsp; Thêm ngữ cảnh</span><span>Codex ⌄ &nbsp; <b>↑</b></span></div></div><div class="mock-disclaimer">Bản mô phỏng · nội dung minh họa</div></section>
-              </div><img id="preview-image" class="preview-image" alt="" aria-hidden="true"><div id="preview-empty" class="preview-empty">Chọn ảnh hoặc GIF trong thư viện</div>
+              </div><div class="preview-layer"><img id="preview-image" class="preview-image" alt="" aria-hidden="true"></div><div id="preview-empty" class="preview-empty">Chọn ảnh hoặc GIF trong thư viện</div>
             </div>
             <div class="preview-bottom"><span id="preview-value">Chưa chọn hình nền</span><span id="preview-kind" class="tag">Ảnh tĩnh</span></div>
+            <button id="crop-open" class="button secondary" type="button">Căn / cắt ảnh · phóng to, thu nhỏ</button>
           </div>
           <div class="settings-panel panel">
             <div class="setting-heading"><div><h2>Độ hiện của hình nền</h2><p>Ảnh phủ cả lên chữ. Mức 15–25% thường dễ đọc hơn.</p></div><output id="strength-value" for="strength">35<span>%</span></output></div>
@@ -59,6 +60,17 @@
     <div id="status" class="toast" role="status" aria-live="polite" hidden></div>
     <p id="runtime-status" class="sr-only" role="status"></p>
   </div>
+  <dialog id="crop-dialog" class="crop-dialog" aria-labelledby="crop-title">
+    <header><div><h2 id="crop-title">Chọn vùng ảnh hiển thị</h2><p>Kéo ảnh trong khung hoặc dùng các thanh trượt. Ảnh gốc được giữ nguyên.</p></div><button id="crop-close" class="button ghost" type="button">Xong</button></header>
+    <label class="crop-ratio">Khung xem thử <select id="crop-ratio"><option value="screen">Theo màn hình này</option><option value="1.7777777778">16:9</option><option value="1.6">16:10</option><option value="2.3333333333">21:9</option><option value="1.3333333333">4:3</option></select></label>
+    <div id="crop-stage" class="crop-stage"><img id="crop-image" alt="Ảnh đang căn vùng hiển thị" draggable="false"><div class="crop-grid" aria-hidden="true"></div></div>
+    <div class="crop-controls">
+      <div class="crop-modes"><button id="crop-cover" class="button secondary" type="button">Phủ kín khung</button><button id="crop-contain" class="button ghost" type="button">Hiện toàn bộ ảnh</button><button id="crop-reset" class="text-button" type="button">Đặt lại</button></div>
+      <label>Phóng to / thu nhỏ <output id="crop-zoom-value">100%</output><input id="crop-zoom" aria-label="Phóng to / thu nhỏ" type="range" min="25" max="400" value="100" step="1"></label>
+      <div class="crop-position"><label>Vị trí ngang <input id="crop-x" type="range" min="0" max="100" value="50" step="0.1"></label><label>Vị trí dọc <input id="crop-y" type="range" min="0" max="100" value="50" step="0.1"></label></div>
+      <p>Khung là bản xem thử. Khi đổi kích thước cửa sổ Codex, vùng hiển thị được căn lại theo vị trí và độ phóng đã chọn. Bấm <b>Xong</b>, rồi <b>Áp dụng hình nền</b> để lưu.</p>
+    </div>
+  </dialog>
   <template id="card-template"><button class="card" type="button" aria-pressed="false"><span class="card-art"><img alt="" loading="lazy"><span class="type-badge">GIF</span><span class="card-check"><svg><use href="#i-check"/></svg></span></span><span class="name"></span><span class="card-meta"><small class="size"></small><small class="saved-label"></small></span></button></template>
 </body>
 </html>

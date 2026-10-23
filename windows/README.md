@@ -27,6 +27,10 @@ Nút **Mở Codex** kích hoạt ứng dụng chính thức, không cần đóng
 
 ## Thư viện và dữ liệu
 
+Bấm **Căn / cắt ảnh** dưới phần xem trước để chọn vùng hiển thị. Kéo để dời ảnh hoặc dùng thanh **Vị trí ngang/dọc**; chỉnh **Phóng to / thu nhỏ** từ 25–400%. **Phủ kín khung** lấp đầy cửa sổ, **Hiện toàn bộ ảnh** giữ đủ nội dung (có thể có vùng nền tối); **Đặt lại** trở về cách căn giữa mặc định. Thử khung theo màn hình, 16:9, 16:10, 21:9 hoặc 4:3 rồi bấm **Xong → Áp dụng hình nền**.
+
+Cách căn được lưu trong `settings.json` và giữ sau khi mở lại. Ảnh/GIF gốc không bị cắt hoặc ghi đè. Khung chỉ mô phỏng tỷ lệ: bộ nạp vẫn theo kích thước cửa sổ Codex thật và giữ vị trí/độ phóng tương đối khi đổi kích thước. Cấu hình cũ chưa có cách căn tiếp tục dùng chế độ phủ kín, căn giữa như trước.
+
 Dữ liệu nằm dưới `%USERPROFILE%\CodexWallpaper`, bên ngoài kho mã nguồn:
 
 | Vị trí | Nội dung |
