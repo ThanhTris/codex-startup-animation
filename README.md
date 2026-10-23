@@ -1,6 +1,6 @@
 # Hình nền Codex cho Windows
 
-**Codex Wallpaper** giúp bạn dùng ảnh riêng hoặc GIF làm hình nền cho Codex trên Windows. Chọn và lưu một lần trong thư viện; những lần sau, mở **biểu tượng Codex gốc** như bình thường để hiện hình nền đã lưu.
+**Codex Wallpaper** giúp bạn dùng ảnh riêng, GIF hoặc video MP4/WebM/MOV làm hình nền cho Codex trên Windows. Chọn và lưu một lần trong thư viện; những lần sau, mở **biểu tượng Codex gốc** như bình thường để hiện hình nền đã lưu. GIF và video phát lặp vô hạn.
 
 Dự án do [ThanhTris](https://github.com/ThanhTris/codex-startup-animation) phát triển từ bản sao nhánh của [panding999/codex-startup-animation](https://github.com/panding999/codex-startup-animation). Mã hoạt ảnh khởi động trên macOS của dự án gốc vẫn được giữ lại, với [hướng dẫn riêng bằng tiếng Việt](docs/macos.md).
 
@@ -16,6 +16,7 @@ Dự án do [ThanhTris](https://github.com/ThanhTris/codex-startup-animation) ph
 | Đổi hình nền khi đang dùng | Bấm **Áp dụng hình nền** để lưu lựa chọn và cập nhật cửa sổ Codex đang mở. |
 | Tự hiện khi mở app gốc | Bộ nạp chạy nền nhận diện cửa sổ Codex; không cần mở thư viện mỗi lần dùng. |
 | Phát ảnh động | GIF giữ nguyên chuyển động, giới hạn khoảng 15 khung hình/giây; tự dừng khi mọi cửa sổ Codex bị ẩn hoặc thu nhỏ. |
+| Video lặp vô hạn | Nhận MP4, M4V, WebM và MOV; phát lại toàn bộ clip khi hết, không có âm thanh. Dùng chung độ hiện, căn/cắt ảnh và lưu lựa chọn. |
 | Tạm dừng GIF | Chọn tạm dừng trong thư viện rồi áp dụng để dùng khung hình tĩnh. |
 | Khôi phục giao diện | Tắt lớp hình nền và giữ nguyên ảnh trong thư viện. |
 | Lưu trên máy | Ảnh và cấu hình nằm ngoài kho mã nguồn, không được gửi lên mạng. |
@@ -59,12 +60,31 @@ Muốn chọn vùng ảnh, bấm **Căn / cắt ảnh** dưới phần xem trư�
 | --- | --- |
 | `%USERPROFILE%\CodexWallpaper\images` | Ảnh tĩnh của bạn và bản JPEG tối ưu được tạo riêng. |
 | `%USERPROFILE%\CodexWallpaper\gifs` | GIF gốc, giữ nguyên dữ liệu động khi áp dụng. |
+| `%USERPROFILE%\CodexWallpaper\videos` | Video gốc; phát lặp vô hạn, không âm thanh. |
+| `%USERPROFILE%\CodexWallpaper\video-cache` | Ảnh xem trước và thông tin video; không chứa bản GIF chuyển đổi. |
 | `%USERPROFILE%\CodexWallpaper\settings.json` | Lựa chọn hình nền, độ hiện và trạng thái tạm dừng. |
 | `%USERPROFILE%\CodexWallpaper\app` | Mã chương trình và bộ nạp đã biên dịch trên máy. |
 
 Bạn có thể chép tệp vào thư mục rồi bấm **Làm mới thư viện**. Thư viện cũng tự kiểm tra thay đổi khi đang mở. Việc đóng Codex hoặc thư viện không xóa ảnh và cấu hình.
 
 ## Giới hạn ảnh và GIF
+
+### Video MP4, M4V, WebM và MOV
+
+Mở tab **Video**, thêm hoặc kéo thả video, chọn cách căn rồi bấm **Áp dụng hình nền**. Bộ nạp phát lặp vô hạn, tắt âm thanh và giới hạn khoảng 15 khung hình/giây. Khi Codex bị ẩn/thu nhỏ, bộ giải mã ngừng nhận yêu cầu khung hình; khi mở lại, video tiếp tục. Video gốc được giữ trong `%USERPROFILE%\CodexWallpaper\videos`, không đổi thành GIF. Ảnh thu nhỏ và ảnh dùng khi tạm dừng nằm trong `video-cache`.
+
+Giới hạn hiện tại: **200 MB/tệp, 10 phút, 8,3 megapixel**; hỗ trợ codec H.264, VP8, VP9 hoặc AV1. **MP4 H.264** tương thích tốt nhất với phần xem trước trong trình duyệt. Bộ nạp giảm kích thước khung hình tối đa 1280×720 để hạn chế tài nguyên; tốc độ thực tế còn tùy video và cấu hình máy. Một số tệp MOV cũ không có cấu trúc được hỗ trợ sẽ bị từ chối.
+
+Video cần bộ giải mã [FFmpeg](https://ffmpeg.org/documentation.html) bên ngoài. Ảnh tĩnh và GIF không cần thành phần này. Trên máy mới, cài qua WinGet rồi chạy lại bộ cài để ghi nhận đường dẫn:
+
+```powershell
+winget install --id Gyan.FFmpeg.Essentials --exact --source winget
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\windows\install.ps1
+```
+
+FFmpeg không được đóng gói hoặc tải lên repo này. Bộ cài chỉ tìm thành phần đã cài và ghi đường dẫn vào `video-runtime.json`. Có thể bấm **Tạm dừng** rồi Áp dụng để lưu video ở trạng thái ảnh tĩnh; khi mở lại, trạng thái này được giữ.
+
+### Ảnh tĩnh và GIF
 
 - Mỗi tệp tối đa **30 MB**.
 - Ảnh tĩnh tối đa **40 megapixel**; khi áp dụng sẽ tạo JPEG tối ưu riêng và giữ ảnh gốc.

@@ -51,7 +51,19 @@ Mỗi tệp tối đa **30 MB**. Ảnh tĩnh tối đa **40 megapixel**. GIF t�
 
 Ảnh không được gửi lên mạng. Dữ liệu đặt tại thư mục hồ sơ người dùng để tiến trình bên ngoài bản Store đọc được, tránh chuyển hướng AppData của MSIX. Bộ cài có thể sao chép dữ liệu cũ từ AppData khi cần, không xóa bản nguồn.
 
-## GIF và mức sử dụng tài nguyên
+## Ảnh động, video và mức sử dụng tài nguyên
+
+### Video lặp vô hạn
+
+Tab **Video** nhận MP4, M4V, WebM và MOV; tối đa 200 MB, 10 phút và 8,3 megapixel, codec H.264/VP8/VP9/AV1. Nên dùng MP4 H.264 để phần xem trước trong trình duyệt tương thích tốt. Một số MOV cũ không được hỗ trợ. Video gốc được lưu ở `videos`, ảnh thu nhỏ ở `video-cache`; ảnh thu nhỏ không phát động trong danh sách.
+
+Thêm video bằng **Thêm ảnh / GIF / video** hoặc kéo thả, chọn video, căn/cắt và chỉnh độ hiện rồi Áp dụng. Video tự lặp lại toàn bộ clip khi đến cuối, luôn tắt âm thanh. Bộ nạp dùng một tiến trình FFmpeg chung cho các cửa sổ, hai bộ đệm điểm ảnh cố định, dựng tối đa 1280×720 và khoảng 15 khung hình/giây. Khi mọi cửa sổ Codex bị ẩn/thu nhỏ hoặc lưu trạng thái tạm dừng, bộ nạp ngừng yêu cầu khung hình, không tích trữ toàn bộ video trong RAM. Khi đổi sang ảnh/GIF hoặc tắt hình nền, tiến trình giải mã được dừng.
+
+FFmpeg là thành phần riêng, không được đóng gói vào repo. Cài bằng `winget install --id Gyan.FFmpeg.Essentials --exact --source winget`, sau đó chạy lại `windows/install.ps1`. Bộ cài tìm `ffmpeg.exe` và `ffprobe.exe` trong đường dẫn chương trình hoặc đường dẫn người dùng, rồi ghi `video-runtime.json`. Không có FFmpeg thì ảnh/GIF vẫn dùng được, nhưng nhập video sẽ báo thiếu bộ giải mã. Tệp video đang phát được đọc trực tiếp; nếu cần ghi đè tệp đó, hãy đổi sang hình khác trước.
+
+Xem trước trong trình duyệt có thể phát theo tốc độ gốc, khác giới hạn bộ nạp. Số đo GIF trong báo cáo cũ không đại diện cho CPU/GPU của video. Kiểm thử video: `node --test tools/windows-video.test.mjs`; bộ kiểm thử bộ nạp sẽ chạy thêm phần video khi đặt `CODEX_TEST_FFMPEG` trỏ đến FFmpeg.
+
+### GIF
 
 GIF giữ nguyên dữ liệu động, phát lặp liên tục theo thời gian từng khung hình và giới hạn khoảng **15 khung hình/giây** trong Codex. Các cửa sổ dùng chung một bộ giải mã và trục thời gian; chương trình không lưu sẵn toàn bộ khung hình đã giải nén.
 

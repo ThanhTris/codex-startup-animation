@@ -7,7 +7,7 @@ const transient=new Set(['EBUSY','EACCES','EPERM']);
 async function retry(action){
   for(let attempt=0;;attempt++){
     try{return await action();}
-    catch(error){if(attempt>=5||!transient.has(error.code))throw error;await delay(25*(attempt+1));}
+    catch(error){if(attempt>=8||!transient.has(error.code))throw error;await delay(25*(attempt+1));}
   }
 }
 export async function readSettings(root){

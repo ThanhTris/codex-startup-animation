@@ -10,6 +10,8 @@ import {readRuntime} from './runtime.mjs';
 import {mediaKind,mediaFolder,readMedia} from './media.mjs';
 import {readSettings,writeSettings} from './settings.mjs';
 import {normalizeCrop} from './crop.mjs';
+import {MAX_VIDEO_BYTES,videoMime,videoFile,videoRuntime} from './video.mjs';
+import {createReadStream} from 'node:fs';
 
 const here=fileURLToPath(new URL('.',import.meta.url));
 const html=await readFile(join(here,'manager.html'));
@@ -18,7 +20,7 @@ const css=await readFile(join(here,'manager.css'));
 const cropScript=await readFile(join(here,'crop.mjs'));
 const MAX_BODY=Math.ceil(MAX_IMAGE_BYTES*1.42)+1024;
 function reply(res,status,body,type='application/json; charset=utf-8'){
-  res.writeHead(status,{'Content-Type':type,'X-Content-Type-Options':'nosniff','Cache-Control':'no-store','Referrer-Policy':'no-referrer','Content-Security-Policy':"default-src 'self'; img-src 'self' blob:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'"});res.end(type.startsWith('application/json')?JSON.stringify(body):body);
+  res.writeHead(status,{'Content-Type':type,'X-Content-Type-Options':'nosniff','Cache-Control':'no-store','Referrer-Policy':'no-referrer','Content-Security-Policy':"default-src 'self'; img-src 'self' blob:; media-src 'self' blob:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'"});res.end(type.startsWith('application/json')?JSON.stringify(body):body);
 }
 async function bodyJSON(req){
   const chunks=[];let size=0;
@@ -30,7 +32,7 @@ function openBrowser(url){
 }
 export async function startLibrary({root,open:shouldOpen=true}={}){
   if(!root)throw new Error('Thiếu thư mục dữ liệu.');
-  root=resolve(root);const library=join(root,'images');await mkdir(library,{recursive:true});await mkdir(join(root,'gifs'),{recursive:true});
+  root=resolve(root);const library=join(root,'images');for(const folder of ['images','gifs','videos','video-cache'])await mkdir(join(root,folder),{recursive:true});
   const token=randomBytes(24).toString('hex'),mediaCache=new Map();let server,mutation=Promise.resolve();
   const mutate=action=>{const pending=mutation.then(action);mutation=pending.catch(()=>{});return pending;};
   const cleanRendered=async previous=>{
@@ -78,11 +80,11 @@ export async function startLibrary({root,open:shouldOpen=true}={}){
       }
       if(req.method==='GET'&&url.pathname==='/api/images'){
         const entries=[],warnings=[],present=new Set();
-        for(const kind of ['image','gif'])for(const entry of await readdir(mediaFolder(root,kind),{withFileTypes:true})){
-          if(!entry.isFile()||entry.name.startsWith('.')||!(/\.(png|jpe?g|webp|gif)$/i).test(entry.name))continue;
+        for(const kind of ['image','gif','video'])for(const entry of await readdir(mediaFolder(root,kind),{withFileTypes:true})){
+          if(!entry.isFile()||entry.name.startsWith('.')||!(kind==='video'?videoMime(entry.name):(/\.(png|jpe?g|webp|gif)$/i).test(entry.name)))continue;
           try{
             const path=join(mediaFolder(root,kind),entry.name),details=await stat(path),key=`${details.size}:${details.mtimeMs}`;present.add(path);
-            if(details.size>MAX_IMAGE_BYTES)throw new Error('Vượt giới hạn 30 MB.');
+            if(details.size>(kind==='video'?MAX_VIDEO_BYTES:MAX_IMAGE_BYTES))throw new Error(kind==='video'?'Video vượt giới hạn 200 MB.':'Vượt giới hạn 30 MB.');
             const cached=mediaCache.get(path);
             if(cached?.key===key){entries.push(cached.image);continue;}
             const {bytes,path:ignored,...metadata}=await readMedia(root,kind,entry.name),image={...metadata,revision:key};mediaCache.set(path,{key,image});entries.push(image);
@@ -95,6 +97,34 @@ export async function startLibrary({root,open:shouldOpen=true}={}){
         const value=await readSettings(root);
         const strength=Number(value.strength);
         reply(res,200,{enabled:value.enabled===true,name:typeof value.name==='string'?value.name:'',kind:mediaKind(value.kind),paused:value.paused===true,crop:normalizeCrop(value.crop),strength:Math.max(0,Math.min(75,Number.isFinite(strength)?strength:35))});return;
+      }
+      if((req.method==='GET'||req.method==='HEAD')&&url.pathname.startsWith('/videos/')){
+        const video=await videoFile(root,decodeURIComponent(url.pathname.slice(8))),range=req.headers.range;
+        let start=0,end=video.size-1,status=200;
+        if(range){const match=/^bytes=(\d*)-(\d*)$/.exec(range);if(!match||(!match[1]&&!match[2])){res.writeHead(416,{'Content-Range':`bytes */${video.size}`});res.end();return;}
+          if(!match[1])start=Math.max(0,video.size-Number(match[2]));else{start=Number(match[1]);if(match[2])end=Math.min(end,Number(match[2]));}
+          if(!Number.isSafeInteger(start)||!Number.isSafeInteger(end)||start>end||start>=video.size){res.writeHead(416,{'Content-Range':`bytes */${video.size}`});res.end();return;}status=206;
+        }
+        const headers={'Content-Type':video.mime,'Content-Length':end-start+1,'Accept-Ranges':'bytes','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'};
+        if(status===206)headers['Content-Range']=`bytes ${start}-${end}/${video.size}`;
+        res.writeHead(status,headers);if(req.method==='HEAD'){res.end();return;}
+        const stream=createReadStream(video.path,{start,end});stream.on('error',()=>res.destroy());res.on('close',()=>stream.destroy());stream.pipe(res);return;
+      }
+      if(req.method==='GET'&&/^\/video-posters\/[a-f0-9]{64}\.jpg$/.test(url.pathname)){
+        const data=await readFile(join(root,'video-cache',url.pathname.slice(15)));reply(res,200,data,'image/jpeg');return;
+      }
+      if(req.method==='POST'&&url.pathname==='/api/import-video'){
+        await videoRuntime(root);
+        const name=safeImageName(decodeURIComponent(req.headers['x-file-name']||''));if(!videoMime(name))throw new Error('Chỉ nhận MP4, M4V, WebM hoặc MOV.');
+        const temporary=join(root,'videos',`.upload-${randomUUID()}${extname(name)}`);let handle,size=0,target,validationPoster;
+        try{
+          handle=await open(temporary,'wx');for await(const chunk of req){size+=chunk.length;if(size>MAX_VIDEO_BYTES)throw new Error('Video vượt giới hạn 200 MB.');await handle.writeFile(chunk);}await handle.close();handle=null;
+          // Validate before publishing the original into the visible library.
+          const validated=await readMedia(root,'video',temporary.split(/[\\/]/).pop());validationPoster=validated.poster.split('/').pop();
+          let index=0;while(true){target=index?`${name.slice(0,-extname(name).length)}-${index}${extname(name)}`:name;
+            const {link}=await import('node:fs/promises');try{await link(temporary,join(root,'videos',target));break;}catch(error){if(error.code!=='EEXIST')throw error;index++;}}
+          reply(res,201,{name:target,kind:'video',id:`video:${target}`});
+        }finally{if(handle)await handle.close();await unlink(temporary).catch(()=>{});if(validationPoster)for(const file of [validationPoster,validationPoster.replace(/\.jpg$/,'.json')])await unlink(join(root,'video-cache',file)).catch(()=>{});}return;
       }
       if(req.method==='GET'&&(url.pathname.startsWith('/images/')||url.pathname.startsWith('/gifs/'))){
         const kind=url.pathname.startsWith('/gifs/')?'gif':'image',name=safeImageName(decodeURIComponent(url.pathname.slice(kind==='gif'?6:8))),image=await readMedia(root,kind,name);
@@ -115,12 +145,13 @@ export async function startLibrary({root,open:shouldOpen=true}={}){
         const data=await bodyJSON(req);
         const settings=await mutate(async()=>{
         const kind=mediaKind(data.kind),name=safeImageName(data.name),image=await readMedia(root,kind,name);
-        const optimized=kind==='gif'?null:Buffer.from(String(data.optimized||''),'base64');
-        if(kind!=='gif'&&(!optimized.length||optimized.length>MAX_IMAGE_BYTES||imageMime('wallpaper.jpg',optimized)!=='image/jpeg'))throw Object.assign(new Error('Không thể tối ưu ảnh đã chọn.'),{status:400});
+        const optimized=kind==='image'?Buffer.from(String(data.optimized||''),'base64'):null;
+        if(kind==='image'&&(!optimized.length||optimized.length>MAX_IMAGE_BYTES||imageMime('wallpaper.jpg',optimized)!=='image/jpeg'))throw Object.assign(new Error('Không thể tối ưu ảnh đã chọn.'),{status:400});
         const previous=await readSettings(root);
-        const renderedName=kind==='gif'?name:`.codex-wallpaper-${randomUUID()}.jpg`;
+        const renderedName=kind==='image'?`.codex-wallpaper-${randomUUID()}.jpg`:name;
         const requestedStrength=Number(data.strength),strength=Math.max(0,Math.min(75,Math.round(Number.isFinite(requestedStrength)?requestedStrength:35)));
-        const settings={version:3,revision:randomUUID(),enabled:true,kind,name:image.name,renderedName,strength,paused:kind==='gif'&&data.paused===true,crop:normalizeCrop(data.crop)};
+        const settings={version:4,revision:randomUUID(),enabled:true,kind,name:image.name,renderedName,strength,paused:kind!=='image'&&data.paused===true,crop:normalizeCrop(data.crop)};
+        if(kind==='video')settings.video={width:image.renderWidth,height:image.renderHeight,poster:image.poster.split('/').pop(),duration:image.duration};
         try{if(optimized)await writeFile(join(library,renderedName),optimized,{flag:'wx'});await writeSettings(root,settings);}catch(error){if(optimized)await unlink(join(library,renderedName)).catch(()=>{});throw error;}
         await cleanRendered(previous);return settings;
         });

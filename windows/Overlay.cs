@@ -117,6 +117,65 @@ namespace CodexWallpaper {
         public void Dispose() {clock.Stop();if(graphics!=null)graphics.Dispose();if(Frame!=null)Frame.Dispose();if(Source!=null)Source.Dispose();if(stream!=null)stream.Dispose();}
     }
 
+    // One decoder and two reusable pixel buffers, shared by every Codex window.
+    // Frames are requested by the UI timer; a full pipe blocks the decoder while hidden.
+    internal sealed class VideoPlayback : IDisposable {
+        internal readonly Bitmap Frame;
+        private readonly string executable,path;
+        private readonly object gate=new object();
+        private readonly System.Threading.AutoResetEvent demand;
+        private Process process;
+        private System.Threading.Thread worker;
+        private byte[] readBuffer,readyBuffer;
+        private bool ready;
+        private volatile bool disposed,running;
+        internal volatile string Error="";
+        internal int DecodedFrames;
+        internal int ProcessId {get{return process==null?0:process.Id;}}
+        internal VideoPlayback(string exe,string file,string poster,int width,int height) {
+            if(width<2||height<2||width>1280||height>720||(long)width*height>921600||!Path.IsPathRooted(exe)||!File.Exists(exe))throw new InvalidDataException("Thiếu FFmpeg hoặc kích thước video không hợp lệ.");
+            executable=exe;path=file;
+            using(var source=System.Drawing.Image.FromFile(poster)) {
+                if(source.Width!=width||source.Height!=height)throw new InvalidDataException("Ảnh xem trước video không khớp.");
+                Frame=new Bitmap(width,height,PixelFormat.Format32bppArgb);using(var graphics=Graphics.FromImage(Frame))graphics.DrawImageUnscaled(source,0,0);
+            }
+            readBuffer=new byte[width*height*4];readyBuffer=new byte[readBuffer.Length];demand=new System.Threading.AutoResetEvent(false);
+        }
+        internal void SetRunning(bool value) {
+            bool resume=value&&!running;running=value;if(!value||disposed||Error.Length>0)return;
+            if(process==null) {
+                try {
+                    var info=new ProcessStartInfo {FileName=executable,Arguments="-nostdin -v error -threads 2 -stream_loop -1 -protocol_whitelist file,pipe -i \""+path+"\" -map 0:v:0 -an -sn -dn -vf fps=15,scale="+Frame.Width+":"+Frame.Height+" -pix_fmt bgra -threads 1 -f rawvideo pipe:1",UseShellExecute=false,CreateNoWindow=true,RedirectStandardOutput=true,RedirectStandardError=true};
+                    process=new Process {StartInfo=info};process.ErrorDataReceived+=delegate(object sender,DataReceivedEventArgs e){if(!disposed&&!String.IsNullOrWhiteSpace(e.Data))Error=e.Data.Length>500?e.Data.Substring(0,500):e.Data;};
+                    process.Start();process.BeginErrorReadLine();
+                    worker=new System.Threading.Thread(ReadFrames);worker.IsBackground=true;worker.Start();
+                }catch(Exception error){Error=error.Message;return;}
+            }
+            if(resume)demand.Set();
+        }
+        private void ReadFrames() {
+            try {
+                var stream=process.StandardOutput.BaseStream;
+                while(!disposed){demand.WaitOne();if(disposed)break;if(!running)continue;
+                    int offset=0;while(offset<readBuffer.Length){int count=stream.Read(readBuffer,offset,readBuffer.Length-offset);if(count==0)throw new EndOfStreamException("Bộ giải mã video đã dừng.");offset+=count;}
+                    lock(gate){var previous=readyBuffer;readyBuffer=readBuffer;readBuffer=previous;ready=true;DecodedFrames++;}
+                }
+            }catch(Exception error){if(!disposed)Error=error.Message;}
+        }
+        internal bool Advance() {
+            if(Error.Length>0)throw new InvalidDataException(Error);
+            bool changed=false;
+            lock(gate){if(ready){var bits=Frame.LockBits(new Rectangle(0,0,Frame.Width,Frame.Height),ImageLockMode.WriteOnly,PixelFormat.Format32bppArgb);try{Marshal.Copy(readyBuffer,0,bits.Scan0,readyBuffer.Length);}finally{Frame.UnlockBits(bits);}ready=false;changed=true;}}
+            if(running)demand.Set();return changed;
+        }
+        public void Dispose() {
+            disposed=true;running=false;demand.Set();
+            if(process!=null){try{if(!process.HasExited)process.Kill();}catch{}if(worker!=null&&worker.IsAlive)worker.Join(2000);process.Dispose();process=null;}
+            // The worker touches only byte buffers, never the bitmap.
+            if(worker==null||!worker.IsAlive)demand.Dispose();Frame.Dispose();
+        }
+    }
+
     internal sealed class CropSettings {
         internal string Fit="cover";
         internal double Zoom=1, X=.5, Y=.5;
@@ -141,13 +200,18 @@ namespace CodexWallpaper {
         internal string Name="", Error="";
         internal bool Paused;
         private GifPlayback animation;
+        private VideoPlayback video;
+        private string failedVideoText;
+        internal bool IsVideo {get{return video!=null;}}
+        internal int VideoFrames {get{return video==null?0:video.DecodedFrames;}}
+        internal int VideoProcessId {get{return video==null?0:video.ProcessId;}}
         internal bool IsGif {get{return animation!=null;}}
-        internal bool IsAnimated {get{return animation!=null&&animation.Count>1;}}
+        internal bool IsAnimated {get{return video!=null||(animation!=null&&animation.Count>1);}}
         internal int CurrentFrame {get{return animation==null?0:animation.CurrentFrame;}}
         internal Bitmap DisplayImage {get{return animation==null?Image:animation.Frame;}}
-        internal void SetAnimationRunning(bool running){if(animation!=null)animation.SetRunning(running&&!Paused);}
-        internal bool AdvanceAnimation(){return animation!=null&&!Paused&&animation.Advance();}
-        private void ReleaseImage(){if(animation!=null){animation.Dispose();animation=null;}else if(Image!=null)Image.Dispose();Image=null;}
+        internal void SetAnimationRunning(bool running){if(animation!=null)animation.SetRunning(running&&!Paused);if(video!=null)video.SetRunning(running&&!Paused);}
+        internal bool AdvanceAnimation(){return !Paused&&(video!=null?video.Advance():animation!=null&&animation.Advance());}
+        private void ReleaseImage(){if(video!=null){video.Dispose();video=null;}else if(animation!=null){animation.Dispose();animation=null;}else if(Image!=null)Image.Dispose();Image=null;}
         private string lastText;
         private readonly string root;
         private readonly Func<DateTime> clock;
@@ -172,6 +236,8 @@ namespace CodexWallpaper {
                 }
             }
             unreadableSince=DateTime.MinValue;
+            if(video!=null&&video.Error.Length>0){Error=video.Error;failedVideoText=text;ReleaseImage();Opacity=0;return true;}
+            if(text==failedVideoText)return false;
             if(text==lastText&&Error.Length==0)return false;
             try {
                 var data=new JavaScriptSerializer().Deserialize<Dictionary<string,object>>(text);
@@ -180,24 +246,33 @@ namespace CodexWallpaper {
                 double strength=data!=null&&data.TryGetValue("strength",out rawStrength)?Convert.ToDouble(rawStrength):35;
                 if(Double.IsNaN(strength)||Double.IsInfinity(strength))throw new InvalidDataException("Invalid opacity.");
                 strength=Math.Max(0,Math.Min(75,strength));
-                Bitmap next=null;GifPlayback nextAnimation=null;string name="";object rawKind,rawPaused;
+                Bitmap next=null;GifPlayback nextAnimation=null;VideoPlayback nextVideo=null;string name="";object rawKind,rawPaused;
                 bool gif=data!=null&&data.TryGetValue("kind",out rawKind)&&Object.Equals(rawKind,"gif");
+                bool movie=data!=null&&data.TryGetValue("kind",out rawKind)&&Object.Equals(rawKind,"video");
                 bool paused=data!=null&&data.TryGetValue("paused",out rawPaused)&&Object.Equals(rawPaused,true);
                 if(active&&strength>0) {
                     if(!data.TryGetValue("renderedName",out rawName)&&!data.TryGetValue("name",out rawName))throw new InvalidDataException("No wallpaper selected.");
                     name=rawName as string;
                     if(String.IsNullOrWhiteSpace(name)||name=="."||name==".."||name.IndexOfAny(Path.GetInvalidFileNameChars())>=0||Path.GetFileName(name)!=name)throw new InvalidDataException("Invalid image name.");
-                    string imagePath=Path.Combine(root,gif?"gifs":"images",name);
+                    string imagePath=Path.Combine(root,movie?"videos":gif?"gifs":"images",name);
                     var info=new FileInfo(imagePath);
-                    if(!info.Exists||info.Length>30*1024*1024||(info.Attributes&FileAttributes.ReparsePoint)!=0)throw new InvalidDataException("Invalid wallpaper file.");
-                    if(gif){nextAnimation=new GifPlayback(File.ReadAllBytes(imagePath));next=nextAnimation.Source;}
+                    if(!info.Exists||info.Length>(movie?200:30)*1024*1024||(info.Attributes&FileAttributes.ReparsePoint)!=0)throw new InvalidDataException("Invalid wallpaper file.");
+                    if(movie){
+                        object rawVideo;var details=data.TryGetValue("video",out rawVideo)?rawVideo as Dictionary<string,object>:null;
+                        if(details==null)throw new InvalidDataException("Chưa chuẩn bị video. Hãy áp dụng lại từ thư viện.");
+                        string poster=Convert.ToString(details["poster"]);
+                        if(!System.Text.RegularExpressions.Regex.IsMatch(poster,"^[a-f0-9]{64}\\.jpg$"))throw new InvalidDataException("Ảnh xem trước video không hợp lệ.");
+                        var runtime=new JavaScriptSerializer().Deserialize<Dictionary<string,object>>(File.ReadAllText(Path.Combine(root,"video-runtime.json")));
+                        nextVideo=new VideoPlayback(Convert.ToString(runtime["ffmpeg"]),imagePath,Path.Combine(root,"video-cache",poster),Convert.ToInt32(details["width"]),Convert.ToInt32(details["height"]));next=nextVideo.Frame;
+                    }
+                    else if(gif){nextAnimation=new GifPlayback(File.ReadAllBytes(imagePath));next=nextAnimation.Source;}
                     else using(var stream=new FileStream(imagePath,FileMode.Open,FileAccess.Read,FileShare.Read|FileShare.Delete))
                         using(var decoded=System.Drawing.Image.FromStream(stream,true,true)) {
                             if((long)decoded.Width*decoded.Height>40000000)throw new InvalidDataException("Image exceeds 40 megapixels.");next=new Bitmap(decoded);
                         }
                 }
                 object rawCrop;Crop=CropSettings.Parse(data!=null&&data.TryGetValue("crop",out rawCrop)?rawCrop:null);
-                ReleaseImage();Image=next;animation=nextAnimation;Paused=paused;Opacity=next==null?0:strength/100;Name=name;lastText=text;Error="";
+                ReleaseImage();Image=next;animation=nextAnimation;video=nextVideo;failedVideoText=null;Paused=paused;Opacity=next==null?0:strength/100;Name=name;lastText=text;Error="";
                 return true;
             } catch(Exception error) {
                 // Retry a transient replacement or missing image on the next tick.
@@ -353,7 +428,7 @@ namespace CodexWallpaper {
             string transition=status+" targets="+Layers.Count+" visible="+visible+" image="+Settings.Name+" opacity="+Settings.Opacity;
             if(transition!=lastTransition){Log(transition);lastTransition=transition;}
             string message=status=="error"?"Bộ nạp đang thử khôi phục: "+error:status=="disabled"?"Hình nền đã tắt. Ảnh cá nhân vẫn được giữ trong thư viện.":status=="applied"?"Lớp ảnh đã hiện trên Codex. Lần sau mở app gốc, ảnh sẽ tự hiện.":"Bộ nạp đang chạy. Ảnh sẽ tự hiện khi cửa sổ Codex được mở hoặc khôi phục.";
-            var state=new {mode="overlay",rendererVersion=4,status=status,message=message,pid=Process.GetCurrentProcess().Id,updatedAt=DateTime.UtcNow.ToString("o"),targetWindows=Layers.Count,visibleOverlays=visible,recoveries=recoveries,eventHooks=events!=null&&events.Active,kind=Settings.IsGif?"gif":"image",animationRunning=animationTimer.Enabled,animationFpsLimit=15,paused=Settings.Paused,strength=Settings.Opacity*100,image=Settings.Name};
+            var state=new {mode="overlay",rendererVersion=5,status=status,message=message,pid=Process.GetCurrentProcess().Id,updatedAt=DateTime.UtcNow.ToString("o"),targetWindows=Layers.Count,visibleOverlays=visible,recoveries=recoveries,eventHooks=events!=null&&events.Active,kind=Settings.IsVideo?"video":Settings.IsGif?"gif":"image",videoFrames=Settings.VideoFrames,animationRunning=animationTimer.Enabled,animationFpsLimit=15,paused=Settings.Paused,strength=Settings.Opacity*100,image=Settings.Name};
             string temporary=Path.Combine(root,"overlay-state-"+Guid.NewGuid()+".tmp"),target=Path.Combine(root,"overlay-state.json");
             try { File.WriteAllText(temporary,new JavaScriptSerializer().Serialize(state),new UTF8Encoding(false)); if(File.Exists(target))File.Replace(temporary,target,null);else File.Move(temporary,target); }
             finally { if(File.Exists(temporary))File.Delete(temporary); }

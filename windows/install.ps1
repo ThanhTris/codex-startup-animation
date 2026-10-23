@@ -7,7 +7,25 @@ $app=Join-Path $root 'app'
 $images=Join-Path $root 'images'
 $programs=Join-Path $env:APPDATA 'Microsoft\Windows\Start Menu\Programs'
 $legacy=Join-Path $programs 'Codex Wallpaper'
-New-Item -ItemType Directory -Path $app,$images,(Join-Path $root 'gifs') -Force | Out-Null
+New-Item -ItemType Directory -Path $app,$images,(Join-Path $root 'gifs'),(Join-Path $root 'videos'),(Join-Path $root 'video-cache') -Force | Out-Null
+# FFmpeg is optional: static images and GIF still work without it.
+$videoRuntime=@{}
+foreach($tool in @('ffmpeg','ffprobe')){
+  $command=Get-Command ($tool+'.exe') -ErrorAction SilentlyContinue
+  $candidate=if($command){$command.Source}else{Join-Path $env:LOCALAPPDATA ('Microsoft\WinGet\Links\'+$tool+'.exe')}
+  if(-not(Test-Path -LiteralPath $candidate)){
+    foreach($directory in (([Environment]::GetEnvironmentVariable('Path','User')+';'+[Environment]::GetEnvironmentVariable('Path','Machine')) -split ';')){
+      if(-not [IO.Path]::IsPathRooted($directory)){continue}
+      $possible=Join-Path $directory ($tool+'.exe');if(Test-Path -LiteralPath $possible){$candidate=$possible;break}
+    }
+  }
+  if(Test-Path -LiteralPath $candidate){
+    $item=Get-Item -LiteralPath $candidate -Force
+    if($item.Target){$candidate=[string]@($item.Target)[0]}
+    $videoRuntime[$tool]=$candidate
+  }
+}
+if($videoRuntime.Count -eq 2){[IO.File]::WriteAllText((Join-Path $root 'video-runtime.json'),($videoRuntime|ConvertTo-Json),[Text.UTF8Encoding]::new($false))}
 $oldRoot=Join-Path $env:LOCALAPPDATA 'CodexWallpaper'
 if(Test-Path -LiteralPath (Join-Path $oldRoot 'images')){Get-ChildItem -LiteralPath (Join-Path $oldRoot 'images') -File -Force | ForEach-Object { $target=Join-Path $images $_.Name; if(-not (Test-Path -LiteralPath $target)){Copy-Item -LiteralPath $_.FullName -Destination $target} }}
 if(-not (Test-Path -LiteralPath (Join-Path $root 'settings.json')) -and (Test-Path -LiteralPath (Join-Path $oldRoot 'settings.json'))){Copy-Item -LiteralPath (Join-Path $oldRoot 'settings.json') -Destination $root}

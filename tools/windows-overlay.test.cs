@@ -210,6 +210,34 @@ namespace CodexWallpaper {
                     saveGif(true);using(var restarted=new OverlayContext(root,()=>Existing(animatedHost)))Assert(restarted.Settings.IsGif&&restarted.Settings.Paused,"GIF selection and pause survive a loader restart");
                 }
                 string official=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),"WindowsApps","OpenAI.Codex_26.1016.8120.0_x64__2p2nqsd0c76g0","app","ChatGPT.exe");
+                string ffmpeg=Environment.GetEnvironmentVariable("CODEX_TEST_FFMPEG");
+                if(!String.IsNullOrEmpty(ffmpeg)) {
+                    Directory.CreateDirectory(Path.Combine(root,"videos"));Directory.CreateDirectory(Path.Combine(root,"video-cache"));
+                    string clip=Path.Combine(root,"videos","loop.mp4"),posterName=new string('a',64)+".jpg",poster=Path.Combine(root,"video-cache",posterName);
+                    using(var generate=Process.Start(new ProcessStartInfo {FileName=ffmpeg,Arguments="-nostdin -v error -f lavfi -i testsrc2=size=96x64:rate=15 -t 0.6 -c:v libx264 -pix_fmt yuv420p \""+clip+"\"",UseShellExecute=false,CreateNoWindow=true})){if(!generate.WaitForExit(15000)||generate.ExitCode!=0)throw new Exception("Could not generate video fixture.");}
+                    using(var generate=Process.Start(new ProcessStartInfo {FileName=ffmpeg,Arguments="-nostdin -v error -i \""+clip+"\" -frames:v 1 \""+poster+"\"",UseShellExecute=false,CreateNoWindow=true})){if(!generate.WaitForExit(15000)||generate.ExitCode!=0)throw new Exception("Could not generate video poster.");}
+                    File.WriteAllText(Path.Combine(root,"video-runtime.json"),new JavaScriptSerializer().Serialize(new {ffmpeg=ffmpeg}));
+                    Action<bool> saveVideo=paused=>File.WriteAllText(Path.Combine(root,"settings.json"),new JavaScriptSerializer().Serialize(new {enabled=true,kind="video",name="loop.mp4",renderedName="loop.mp4",strength=20,paused=paused,video=new {width=96,height=64,poster=posterName},crop=new {fit="contain",zoom=1.5,x=.2,y=.8}}));
+                    saveVideo(false);
+                    using(var videoHost=new TestWindow()){
+                        videoHost.Show();
+                        using(var context=new OverlayContext(root,()=>Existing(videoHost))){
+                            Assert(context.Settings.IsVideo,"native loader recognizes video and keeps crop settings");
+                            Assert(context.Settings.Crop.Fit=="contain"&&context.Settings.Crop.Zoom==1.5,"video uses saved crop and zoom");
+                            Assert(PumpUntil(()=>context.Settings.VideoFrames>30),"short video loops beyond three original durations");
+                            int decoder=context.Settings.VideoProcessId;
+                            videoHost.WindowState=FormWindowState.Minimized;Application.DoEvents();context.Tick();PumpFor(300);int held=context.Settings.VideoFrames;PumpFor(400);
+                            Assert(context.Settings.VideoFrames==held,"hidden video stops requesting decoded frames");
+                            videoHost.WindowState=FormWindowState.Normal;Application.DoEvents();context.Tick();Assert(PumpUntil(()=>context.Settings.VideoFrames>held),"video resumes after restoring app");
+                            saveVideo(true);context.Tick();PumpFor(300);Assert(context.Settings.VideoFrames==0&&context.Settings.VideoProcessId==0,"saved video pause shows poster without starting decoder");
+                            bool stopped;try{stopped=Process.GetProcessById(decoder).HasExited;}catch(ArgumentException){stopped=true;}
+                            Assert(stopped,"changing video settings releases old FFmpeg process");
+                            Save(root,"blue.png",19,true);context.Tick();Assert(!context.Settings.IsVideo,"static selection releases video playback");
+                        }
+                        saveVideo(true);using(var restarted=new OverlayContext(root,()=>Existing(videoHost)))Assert(restarted.Settings.IsVideo&&restarted.Settings.Paused&&restarted.Settings.Crop.X==.2,"video selection, pause and crop survive loader restart");
+                    }
+                }
+                else Console.WriteLine("SKIP native video checks: set CODEX_TEST_FFMPEG to enable.");
                 Assert(TargetWindows.OfficialPath(official),"official package path recognized");
                 Assert(!TargetWindows.OfficialPath(Path.Combine(root,"ChatGPT.exe")),"unrelated ChatGPT process rejected");
                 Assert(!TargetWindows.OfficialPath(official.Replace("2p2nqsd0c76g0","otherpublisher")),"other package publisher rejected");
