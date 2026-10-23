@@ -62,8 +62,8 @@ $iconExe=if($pkg){Join-Path $pkg.InstallLocation 'app\ChatGPT.exe'}else{''}
 & (Join-Path $app 'build-overlay.ps1') -AppRoot $app
 $powershell=Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
 $launch=Join-Path $app 'launch.ps1'
-$taskArgs='-NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File "{0}" -Root "{1}"' -f (Join-Path $app 'service.ps1'),$root
-$action=New-ScheduledTaskAction -Execute $powershell -Argument $taskArgs -WorkingDirectory $app
+$taskArgs='--service --root "{0}"' -f $root
+$action=New-ScheduledTaskAction -Execute (Join-Path $app 'CodexWallpaper.exe') -Argument $taskArgs -WorkingDirectory $app
 $principal=New-ScheduledTaskPrincipal -UserId ([Security.Principal.WindowsIdentity]::GetCurrent().Name) -LogonType Interactive -RunLevel Limited
 $settings=New-ScheduledTaskSettingsSet -ExecutionTimeLimit ([TimeSpan]::Zero) -MultipleInstances IgnoreNew -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries
 Register-ScheduledTask -TaskName 'CodexWallpaperService' -Action $action -Principal $principal -Settings $settings -Description 'Dịch vụ hình nền Codex; chỉ khởi động khi mở Codex Wallpaper.' -Force | Out-Null

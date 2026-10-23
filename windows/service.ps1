@@ -8,6 +8,24 @@ try {
     $pkg=Get-AppxPackage OpenAI.Codex | Sort-Object Version -Descending | Select-Object -First 1
     $node=Join-Path $pkg.InstallLocation 'app\resources\cua_node\bin\node.exe'
   }
-  & $node (Join-Path $Root 'app\server.mjs') --root $Root --no-open 2>> (Join-Path $Root 'service.log')
-  if($LASTEXITCODE -ne 0){throw "Dịch vụ dừng với mã $LASTEXITCODE"}
+  $info=New-Object Diagnostics.ProcessStartInfo
+  $info.FileName=$node
+  $info.Arguments='"{0}" --root "{1}" --no-open' -f (Join-Path $Root 'app\server.mjs'),$Root.TrimEnd('\')
+  $info.WorkingDirectory=Join-Path $Root 'app'
+  $info.UseShellExecute=$false
+  $info.CreateNoWindow=$true
+  $info.RedirectStandardOutput=$true
+  $info.RedirectStandardError=$true
+  $process=New-Object Diagnostics.Process
+  $process.StartInfo=$info
+  $log=[IO.File]::Open((Join-Path $Root 'service.log'),[IO.FileMode]::Append,[IO.FileAccess]::Write,[IO.FileShare]::ReadWrite)
+  try {
+    if(-not $process.Start()){throw 'Không khởi động được dịch vụ thư viện.'}
+    # Drain both pipes while the server runs; no console is allocated for Node.js.
+    $output=$process.StandardOutput.BaseStream.CopyToAsync([IO.Stream]::Null)
+    $errors=$process.StandardError.BaseStream.CopyToAsync($log)
+    $process.WaitForExit()
+    $output.GetAwaiter().GetResult();$errors.GetAwaiter().GetResult()
+    if($process.ExitCode -ne 0){throw "Dịch vụ dừng với mã $($process.ExitCode)"}
+  } finally {$process.Dispose();$log.Dispose()}
 } catch {Add-Content -LiteralPath (Join-Path $Root 'launcher.log') -Value $_.Exception.ToString();exit 1}

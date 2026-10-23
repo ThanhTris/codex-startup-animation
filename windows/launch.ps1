@@ -34,7 +34,11 @@ try {
       $node=Join-Path $pkg.InstallLocation 'app\resources\cua_node\bin\node.exe'
     }
     if(-not (Test-Path -LiteralPath $node)){throw 'Không tìm thấy Node.js. Hãy cài Node.js 22 trở lên.'}
-    $version=(& $node --version).Trim()
+    $versionInfo=New-Object Diagnostics.ProcessStartInfo
+    $versionInfo.FileName=$node;$versionInfo.Arguments='--version'
+    $versionInfo.UseShellExecute=$false;$versionInfo.CreateNoWindow=$true;$versionInfo.RedirectStandardOutput=$true
+    $versionProcess=[Diagnostics.Process]::Start($versionInfo)
+    try{$version=$versionProcess.StandardOutput.ReadToEnd().Trim();$versionProcess.WaitForExit();if($versionProcess.ExitCode -ne 0){throw 'Không kiểm tra được phiên bản Node.js.'}}finally{$versionProcess.Dispose()}
     if($version -notmatch '^v(\d+)\.' -or [int]$Matches[1] -lt 22){throw 'Cần Node.js 22 trở lên.'}
     # The on-demand Windows task survives closing the Codex app or this launcher.
     Start-ScheduledTask -TaskName 'CodexWallpaperService'

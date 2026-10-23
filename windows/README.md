@@ -90,6 +90,8 @@ Có hai tác vụ riêng:
 | `CodexWallpaperOverlay` | Khi cài và khi đăng nhập Windows; tiếp tục chờ nếu Codex đã đóng. | Theo dõi cửa sổ và hiển thị hình nền đã lưu. |
 | `CodexWallpaperService` | Khi cần mở thư viện. | Phục vụ giao diện thư viện qua địa chỉ nội bộ; mở bằng cửa sổ ứng dụng Edge hoặc trình duyệt mặc định. |
 
+Dịch vụ thư viện được tác vụ Windows mở qua chương trình `CodexWallpaper.exe --service`, biên dịch dạng ứng dụng không có console. PowerShell và Node.js con đều được khởi chạy ẩn; mở thư viện không cần giữ cửa sổ terminal. Nhật ký lỗi vẫn ghi vào `service.log` và `launcher.log`; lỗi khởi chạy bộ quản lý dịch vụ nằm trong `app\service-launcher.log`.
+
 Đóng thư viện hoặc thoát Codex không dừng bộ nạp. Mở lại thư viện sẽ khởi động bộ nạp nếu đã dừng. Bộ cài giữ lối tắt thư viện đã ghim, chỉ chuyển các lối tắt Codex do bộ cài cũ đổi về ứng dụng chính thức.
 
 Nếu tệp cấu hình tạm bị khóa hoặc đang thay thế, bộ nạp giữ ảnh hiện tại tối đa hai giây trong lúc đọc lại. Lưu/khôi phục được xử lý tuần tự, thay tệp cấu hình nguyên khối và thử lại khi Windows khóa tệp trong chốc lát. Giao diện khóa thao tác thay đổi trong khi lưu, bỏ phản hồi làm mới cũ và cập nhật ảnh xem trước khi tệp cùng tên bị chép đè. Áp dụng lại GIF sẽ nạp bộ giải mã mới.
@@ -118,6 +120,7 @@ Xem `overlay-state.json` và `overlay.log` khi cần kiểm tra sâu hơn. Kiể
 node --test tools/extension.test.mjs tools/windows-wallpaper.test.mjs tools/windows-video.test.mjs tools/windows-library.test.mjs
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tools\windows-overlay.test.ps1
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tools\windows-launcher.test.ps1
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tools\windows-service.test.ps1
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tools\windows-taskbar.test.ps1
 ```
 
