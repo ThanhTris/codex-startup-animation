@@ -1,6 +1,12 @@
-# Codex Startup Animation
+# Codex Wallpaper for Windows · Startup Animation
 
-给 macOS 上的 Codex 加上一段可自定义的启动动画，以及动画结束后的静态透明背景。
+Fork được phát triển bởi [ThanhTris](https://github.com/ThanhTris/codex-startup-animation), dựa trên [panding999/codex-startup-animation](https://github.com/panding999/codex-startup-animation).
+
+Phần phát triển Windows gồm thư viện ảnh riêng, GIF, xem trước và chỉnh độ đậm, tự hiện hình nền khi mở biểu tượng Codex gốc và khôi phục giao diện. Ảnh cá nhân được lưu ngoài repository. Xem [hướng dẫn cài và sử dụng Windows](windows/README.md) và [kết quả kiểm tra](docs/stability-review.md).
+
+Phần tài liệu và triển khai macOS từ dự án gốc được giữ bên dưới.
+
+为 macOS 上的 Codex 添加可自定义的启动动画，也可在 Windows 上用个人图片或 GIF 设置 Codex 壁纸。
 
 ## 效果演示
 
@@ -20,15 +26,24 @@
 - 点击跳过按钮或按 Esc 可跳过动画，支持系统“减少动态效果”设置。
 - 启动辅助进程确认动画开始后退出；动画结束删除覆盖层，只保留静态壁纸及设置入口。
 - 提供独立预览应用，便于调试而不影响官方应用。
+- Windows 提供独立图片库、个人壁纸快捷方式、即时应用与恢复原版外观。
 
 ## 环境要求
 
-**当前仅支持 macOS，尚未提供 Windows 启动器。** 动画前端使用 HTML / CSS / Canvas，可以作为移植基础；启动应用、签名校验、素材预处理和打包仍依赖 macOS，Windows 集成尚未实现或验证。
+macOS 启动动画和 Windows 壁纸使用独立实现。Windows 支持静态图片和 GIF，不播放 macOS 的启动动画。
+
+**macOS：**
 
 - macOS 13 或更高版本。
 - Xcode Command Line Tools（构建使用 `swiftc`、AppKit、WebKit 和 Vision）。
 - 已安装官方 Codex / ChatGPT 桌面应用，应用标识为 `com.openai.codex`。
-- 正式启动器复用官方应用内的 `Contents/Resources/cua_node/bin/node`，不需要额外打包 Electron，也没有 npm 依赖。
+- 正式启动器复用官方应用内的 Node，不需要额外打包 Electron，也没有 npm 依赖。
+
+**Windows：**
+
+- Windows 10/11，已安装 Microsoft Store 版 Codex (`OpenAI.Codex`)。
+- 图片库优先使用 PATH 上的 Node.js 22 或更新版本，否则使用 Codex 自带的 Node.js。常驻壁纸层不依赖 Node.js。
+- 不需要 npm package 或管理员权限。
 
 曾在官方应用 **26.924.22138** 上使用并验证。新版本可能改变内置运行环境、窗口结构或调试能力，不保证自动兼容所有版本。
 
@@ -56,6 +71,16 @@ bash tools/build-macos.sh
 如果官方应用已经在运行，粉色启动器只会切回已有窗口，不会强行重启或重播。直接打开官方图标不会自动加载本项目的动画。仓库不包含已编译的 `.app`，首次使用前需要构建。
 
 单独检查动画时，双击 `预览动画.command`。浏览器打开 `index.html` 也可以使用时间轴和重播控件；正式集成以 macOS 应用为准。
+
+### Windows：安装个人图片或 GIF 壁纸
+
+在 PowerShell 中运行：
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\windows\install.ps1
+```
+
+从 Start Menu 打开 **Codex Wallpaper**，添加或复制图片到 `%USERPROFILE%\CodexWallpaper\images`，GIF 放在同级 `gifs` 文件夹，预览并应用。GIF 限制约 15 FPS，隐藏或最小化时暂停。此后直接打开官方 Codex 图标；登录启动的 Windows 程序会自动显示透明图片层，无需每次打开图片库。图片层也会影响文字颜色，与 macOS 的网页背景方式不同。详见 [Windows 使用说明](windows/README.md)、[稳定性检查](docs/stability-review.md) 和 [fork 调研](docs/windows-forks.md)。
 
 ## 图片与文字设置
 
@@ -102,7 +127,7 @@ bash tools/build-extension.sh
 
 头像碎片贴图在播放计时前准备，转场结束后释放。没有持续播放的视频、后台动画服务或常驻轮询。动画结束仍会保留图片、静态样式和设置所需资源，因此额外内存不是零；实际峰值未完成系统级量化测试。
 
-**本机调试端口会随官方应用进程保留。** 即使辅助进程已经退出、外观已恢复，同机进程仍可能连接该端口。完全退出应用，再从官方图标正常打开，才会结束本次扩展启动的调试状态。
+**macOS 本机调试端口会随官方应用进程保留。** 即使 macOS 辅助进程已经退出、外观已恢复，同机进程仍可能连接该端口。完全退出应用，再从官方图标正常打开，才会结束本次扩展启动的调试状态。Windows 当前默认使用外部透明窗口，不开启 Codex 调试端口；仓库保留了旧版调试启动代码供参考。
 
 ## 更新与已知限制
 
@@ -138,6 +163,7 @@ python3 -m http.server 8765 --bind 127.0.0.1
 ```text
 Native/          macOS 启动入口和独立预览
 extension/       外部接入、窗口筛选、静态背景
+windows/         Windows 图片/GIF 库、启动器和透明壁纸层
 assets/          运行用默认素材
 tools/          构建、素材处理与验证脚本
 index.html       动画和设置面板

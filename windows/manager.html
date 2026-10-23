@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Codex Wallpaper</title>
+  <link rel="stylesheet" href="/manager.css?token=__TOKEN__">
+  <script defer src="/manager.js?token=__TOKEN__"></script>
+</head>
+<body>
+  <svg class="sprite" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs>
+    <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/></symbol>
+    <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="4"/><circle cx="8" cy="8" r="1.5"/><path d="m3 16 5-5 4 4 4-6 5 7"/></symbol>
+    <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7V5a2 2 0 0 1 2-2h5l3 3h6a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/><path d="M3 9h18"/></symbol>
+    <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 16V3m-5 5 5-5 5 5M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2 7M20 4v7h-7"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14m-6-6 6 6-6 6"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="m8 4 12 8-12 8Z"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M6 18 18 6"/></symbol>
+  </defs></svg>
+  <div class="app-shell">
+    <header class="app-header">
+      <a class="brand" href="#"><span class="brand-icon"><svg><use href="#i-grid"/></svg></span><span>Codex <b>Wallpaper</b></span></a>
+      <div class="header-actions"><span id="runtime-badge" class="connection"><i></i><span>Đang kết nối</span></span><button id="launch-codex" class="button ghost" type="button">Mở Codex <svg><use href="#i-arrow"/></svg></button><button id="close" class="icon-button" type="button" aria-label="Đóng thư viện"><svg><use href="#i-close"/></svg></button></div>
+    </header>
+    <main>
+      <div class="page-heading"><div><p class="eyebrow">KHÔNG GIAN CỦA BẠN</p><h1>Một chút cá tính, mỗi ngày.</h1><p>Chọn hình nền bạn thích. Lần sau, cứ mở Codex như bình thường.</p></div><span class="local-label"><i></i> Lưu trên máy của bạn</span></div>
+      <div class="workspace">
+        <section class="library panel" aria-labelledby="library-title">
+          <div class="panel-heading"><h2 id="library-title">Thư viện</h2><button id="refresh" class="icon-button" type="button" aria-label="Làm mới thư viện" title="Làm mới"><svg><use href="#i-refresh"/></svg></button></div>
+          <div class="filters" role="group" aria-label="Lọc loại hình nền"><button data-filter="all" class="filter active" aria-pressed="true">Tất cả <span id="all-count">0</span></button><button data-filter="image" class="filter" aria-pressed="false">Ảnh tĩnh <span id="image-count">0</span></button><button data-filter="gif" class="filter" aria-pressed="false">GIF <span id="gif-count">0</span></button></div>
+          <label class="upload-zone" id="dropzone"><span class="upload-icon"><svg><use href="#i-upload"/></svg></span><strong>Thêm ảnh hoặc GIF</strong><span>Kéo thả vào đây, hoặc bấm để chọn</span><small>PNG, JPG, WebP, GIF · tối đa 30 MB</small><input id="files" type="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple></label>
+          <div class="folder-actions"><button id="folder" class="text-button"><svg><use href="#i-folder"/></svg>Thư mục ảnh</button><button id="gif-folder" class="text-button"><svg><use href="#i-folder"/></svg>Thư mục GIF</button></div>
+          <div class="library-caption"><span id="count">Đang tải…</span><span>Chọn để xem trước</span></div>
+          <div id="gallery" class="gallery" aria-label="Danh sách hình nền"></div>
+          <div id="empty" class="empty-state" hidden><svg><use href="#i-image"/></svg><strong id="empty-title">Thư viện đang trống</strong><p id="empty-description">Thêm một hình ảnh để bắt đầu.</p><button id="empty-folder" class="button secondary">Mở thư mục GIF</button></div>
+        </section>
+        <section class="studio" aria-labelledby="preview-title">
+          <div class="preview-panel panel">
+            <div class="panel-heading"><div class="preview-label"><span class="preview-dot"></span><h2 id="preview-title">Xem trước</h2><span class="tag">Giao diện tối</span></div><button id="preview-play" class="text-button" type="button" hidden>Tạm dừng GIF</button></div>
+            <div id="preview" class="codex-preview" aria-label="Mô phỏng lớp ảnh phủ lên Codex">
+              <div class="mock-codex">
+                <aside class="mock-sidebar"><div class="mock-brand">✳ <b>Codex</b><span>⌄</span></div><div class="mock-new">＋ &nbsp; Cuộc trò chuyện mới</div><div class="mock-section-title">DỰ ÁN</div><div class="mock-thread">▱ &nbsp; Không gian làm việc</div><div class="mock-thread active">✦ &nbsp; Một ý tưởng mới</div><div class="mock-thread">◷ &nbsp; Review giao diện</div><div class="mock-sidebar-bottom"><span class="mock-avatar">U</span><span>Không gian của bạn</span><span>•••</span></div></aside>
+                <section class="mock-main"><header class="mock-topbar"><span>▱ &nbsp; Một ý tưởng mới</span><span>•••</span></header><div class="mock-chat"><div class="mock-user-message">Cùng bắt đầu một điều thú vị nhé.</div><div class="mock-response"><span class="mock-spark">✳</span><div><strong>Mọi thứ đã sẵn sàng.</strong><p>Một không gian quen thuộc, với một chút cảm hứng của riêng bạn.</p><div class="mock-code-line"><span class="code-dot"></span> Sẵn sàng cho ý tưởng tiếp theo</div></div></div></div><div class="mock-composer"><span>Bạn muốn làm gì hôm nay?</span><div><span>＋ &nbsp; Thêm ngữ cảnh</span><span>Codex ⌄ &nbsp; <b>↑</b></span></div></div><div class="mock-disclaimer">Bản mô phỏng · nội dung minh họa</div></section>
+              </div><img id="preview-image" class="preview-image" alt="" aria-hidden="true"><div id="preview-empty" class="preview-empty">Chọn ảnh hoặc GIF trong thư viện</div>
+            </div>
+            <div class="preview-bottom"><span id="preview-value">Chưa chọn hình nền</span><span id="preview-kind" class="tag">Ảnh tĩnh</span></div>
+          </div>
+          <div class="settings-panel panel">
+            <div class="setting-heading"><div><h2>Độ hiện của hình nền</h2><p>Ảnh phủ cả lên chữ. Mức 15–25% thường dễ đọc hơn.</p></div><output id="strength-value" for="strength">35<span>%</span></output></div>
+            <label class="sr-only" for="strength">Độ hiện của hình nền</label><input id="strength" type="range" min="0" max="75" value="35">
+            <div class="setting-bottom"><div class="presets" role="group" aria-label="Mức độ hiện gợi ý"><button data-strength="15">Nhẹ <span>15%</span></button><button data-strength="25">Vừa <span>25%</span></button><button data-strength="35">Rõ <span>35%</span></button></div><span id="motion-note" class="motion-note">Thay đổi được xem trước ngay</span></div>
+          </div>
+          <p class="preview-note"><span>ⓘ</span> Bố cục và màu sắc trong app thật có thể khác bản mô phỏng.</p>
+        </section>
+      </div>
+    </main>
+    <footer class="apply-bar"><div class="selection-summary"><span class="selection-icon"><svg><use href="#i-image"/></svg></span><div><strong id="selected-name">Chưa chọn hình nền</strong><p id="selection-state">Chọn ảnh hoặc GIF để bắt đầu</p></div></div><div class="apply-actions"><button id="restore" class="text-button">Khôi phục giao diện gốc</button><button id="apply" class="button primary" disabled><svg><use href="#i-check"/></svg><span>Áp dụng hình nền</span></button></div></footer>
+    <div id="status" class="toast" role="status" aria-live="polite" hidden></div>
+    <p id="runtime-status" class="sr-only" role="status"></p>
+  </div>
+  <template id="card-template"><button class="card" type="button" aria-pressed="false"><span class="card-art"><img alt="" loading="lazy"><span class="type-badge">GIF</span><span class="card-check"><svg><use href="#i-check"/></svg></span></span><span class="name"></span><span class="card-meta"><small class="size"></small><small class="saved-label"></small></span></button></template>
+</body>
+</html>
