@@ -61,7 +61,7 @@ Mỗi tệp tối đa **30 MB**. Ảnh tĩnh tối đa **40 megapixel**. GIF t�
 
 ### Video lặp vô hạn
 
-Tab **Video** nhận MP4, M4V, WebM và MOV; tối đa 200 MB, 10 phút và 8,3 megapixel, codec H.264/VP8/VP9/AV1. Nên dùng MP4 H.264 để phần xem trước trong trình duyệt tương thích tốt. Một số MOV cũ không được hỗ trợ. Video gốc được lưu ở `videos`, ảnh thu nhỏ ở `video-cache`; ảnh thu nhỏ không phát động trong danh sách.
+Tab **Video** nhận MP4, M4V, WebM và MOV; tối đa 200 MB, 10 phút và đến 8K (33,2 megapixel, mỗi cạnh tối đa 8192 pixel), codec H.264/VP8/VP9/AV1. Video dọc được nhận trong cùng giới hạn. Nên dùng MP4 H.264 để phần xem trước trong trình duyệt tương thích tốt. Một số MOV cũ không được hỗ trợ. Video gốc được giữ nguyên trong `videos`, ảnh thu nhỏ ở `video-cache`; ảnh thu nhỏ không phát động trong danh sách. Bộ nạp vẫn hiển thị tối đa 1280×720, không xuất hình nền 8K; giải mã nguồn lớn vẫn có thể tốn thêm CPU/RAM.
 
 Thêm video bằng **Thêm ảnh / GIF / video** hoặc kéo thả, chọn video, căn/cắt và chỉnh độ hiện rồi Áp dụng. Video tự lặp lại toàn bộ clip khi đến cuối, luôn tắt âm thanh. Bộ nạp dùng một tiến trình FFmpeg chung cho các cửa sổ, hai bộ đệm điểm ảnh cố định, dựng tối đa 1280×720 và khoảng 15 khung hình/giây. Khi mọi cửa sổ Codex bị ẩn/thu nhỏ hoặc lưu trạng thái tạm dừng, bộ nạp ngừng yêu cầu khung hình, không tích trữ toàn bộ video trong RAM. Khi đổi sang ảnh/GIF hoặc tắt hình nền, tiến trình giải mã được dừng.
 

@@ -6,9 +6,35 @@ import {join} from 'node:path';
 import {execFile} from 'node:child_process';
 import {promisify} from 'node:util';
 import {startLibrary} from '../windows/server.mjs';
+import {videoDimensions} from '../windows/video.mjs';
 const exec=promisify(execFile);
 let runtime;
 try{runtime=process.env.CODEX_TEST_FFMPEG?{ffmpeg:process.env.CODEX_TEST_FFMPEG,ffprobe:process.env.CODEX_TEST_FFPROBE}:JSON.parse(await readFile(join(process.env.USERPROFILE||'','CodexWallpaper','video-runtime.json'),'utf8'));}catch{}
+
+test('high-resolution video up to 8K retains bounded render dimensions',()=>{
+  assert.deepEqual(videoDimensions(4092,2302),{renderWidth:1278,renderHeight:720});
+  assert.deepEqual(videoDimensions(7680,4320),{renderWidth:1280,renderHeight:720});
+  assert.deepEqual(videoDimensions(4320,7680),{renderWidth:404,renderHeight:720});
+  assert.deepEqual(videoDimensions(8192,4000),{renderWidth:1280,renderHeight:624});
+  assert.deepEqual(videoDimensions(96,64),{renderWidth:96,renderHeight:64});
+  for(const [w,h] of [[7680,4322],[8194,2],[2,8194],[0,1080],[Infinity,1080],[1920,NaN],[2.5,2]])assert.throws(()=>videoDimensions(w,h),/8K/);
+});
+
+test('video above the old 4K limit imports unchanged and applies with a small render frame',{skip:!runtime&&'Cần FFmpeg'},async()=>{
+  const root=await mkdtemp(join(tmpdir(),'codex-highres-'));let active;
+  try{
+    await writeFile(join(root,'video-runtime.json'),JSON.stringify(runtime));
+    const file=join(root,'source.mp4');
+    await exec(runtime.ffmpeg,['-nostdin','-v','error','-f','lavfi','-i','color=c=navy:size=4092x2302:rate=1','-frames:v','1','-c:v','libx264','-preset','ultrafast','-threads','2','-pix_fmt','yuv420p',file],{windowsHide:true,timeout:30000});
+    const bytes=await readFile(file);active=await startLibrary({root,open:false});const url=new URL(active.url),headers={Authorization:`Bearer ${url.searchParams.get('token')}`};
+    const upload=await fetch(url.origin+'/api/import-video',{method:'POST',headers:{...headers,'X-File-Name':'high-res.mp4'},body:bytes});assert.equal(upload.status,201,await upload.clone().text());
+    assert.deepEqual(await readFile(join(root,'videos','high-res.mp4')),bytes);
+    const listing=await(await fetch(url.origin+'/api/images',{headers})).json(),video=listing.images[0];assert.equal(listing.warnings.length,0);assert.equal(video.width,4092);assert.equal(video.height,2302);assert.equal(video.renderWidth,1278);assert.equal(video.renderHeight,720);
+    const poster=await fetch(url.origin+video.poster,{headers});assert.equal(poster.status,200);
+    const applied=await fetch(url.origin+'/api/apply',{method:'POST',headers:{...headers,'Content-Type':'application/json'},body:JSON.stringify({name:video.name,kind:'video',strength:20})});assert.equal(applied.status,200);
+    const saved=JSON.parse(await readFile(join(root,'settings.json'),'utf8'));assert.equal(saved.video.width,1278);assert.equal(saved.video.height,720);
+  }finally{if(active)await new Promise(resolve=>active.server.close(resolve));await rm(root,{recursive:true,force:true});}
+});
 test('video uploads retain originals, range streaming, poster, crop and pause survive restart',{skip:!runtime&&'Cần FFmpeg: chạy bộ cài hoặc đặt CODEX_TEST_FFMPEG/CODEX_TEST_FFPROBE'},async()=>{
   const root=await mkdtemp(join(tmpdir(),'codex-video-'));let active;
   try{

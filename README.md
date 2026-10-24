@@ -80,7 +80,7 @@ Bạn có thể chép tệp vào thư mục rồi bấm **Làm mới thư viện
 
 Mở tab **Video**, thêm hoặc kéo thả video, chọn cách căn rồi bấm **Áp dụng hình nền**. Bộ nạp phát lặp vô hạn, tắt âm thanh và giới hạn khoảng 15 khung hình/giây. Khi Codex bị ẩn/thu nhỏ, bộ giải mã ngừng nhận yêu cầu khung hình; khi mở lại, video tiếp tục. Video gốc được giữ trong `%USERPROFILE%\CodexWallpaper\videos`, không đổi thành GIF. Ảnh thu nhỏ và ảnh dùng khi tạm dừng nằm trong `video-cache`.
 
-Giới hạn hiện tại: **200 MB/tệp, 10 phút, 8,3 megapixel**; hỗ trợ codec H.264, VP8, VP9 hoặc AV1. **MP4 H.264** tương thích tốt nhất với phần xem trước trong trình duyệt. Bộ nạp giảm kích thước khung hình tối đa 1280×720 để hạn chế tài nguyên; tốc độ thực tế còn tùy video và cấu hình máy. Một số tệp MOV cũ không có cấu trúc được hỗ trợ sẽ bị từ chối.
+Giới hạn hiện tại: **200 MB/tệp, 10 phút, đến 8K (33,2 megapixel, mỗi cạnh tối đa 8192 pixel)**; hỗ trợ codec H.264, VP8, VP9 hoặc AV1, nhận cả video dọc trong các giới hạn trên. **MP4 H.264** tương thích tốt nhất với phần xem trước trong trình duyệt. Video gốc được giữ nguyên độ phân giải và dữ liệu; bộ nạp vẫn dựng khung hình tối đa 1280×720, khoảng 15 FPS để hạn chế tài nguyên. Nhận video 8K không đồng nghĩa hiển thị hình nền ở 8K; giải mã nguồn độ phân giải cao vẫn có thể tốn thêm CPU/RAM, tốc độ thực tế tùy video và cấu hình máy. Một số tệp MOV cũ không có cấu trúc được hỗ trợ sẽ bị từ chối.
 
 Video cần bộ giải mã [FFmpeg](https://ffmpeg.org/documentation.html) bên ngoài. Ảnh tĩnh và GIF không cần thành phần này. Trên máy mới, cài qua WinGet rồi chạy lại bộ cài để ghi nhận đường dẫn:
 

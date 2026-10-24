@@ -6,6 +6,13 @@ import {join,isAbsolute,extname} from 'node:path';
 import {safeImageName} from './wallpaper.mjs';
 const exec=promisify(execFile);
 export const MAX_VIDEO_BYTES=200*1024*1024;
+export const MAX_VIDEO_PIXELS=7680*4320;
+export const MAX_VIDEO_EDGE=8192;
+export function videoDimensions(width,height){
+  if(!Number.isInteger(width)||!Number.isInteger(height)||width<2||height<2||width>MAX_VIDEO_EDGE||height>MAX_VIDEO_EDGE||width*height>MAX_VIDEO_PIXELS)throw new Error(`Video ${width}×${height} vượt giới hạn 8K (33,2 megapixel, mỗi cạnh tối đa 8192 pixel) hoặc kích thước không hợp lệ.`);
+  const scale=Math.min(1,1280/width,720/height);
+  return {renderWidth:Math.max(2,Math.floor(width*scale/2)*2),renderHeight:Math.max(2,Math.floor(height*scale/2)*2)};
+}
 const types={'.mp4':'video/mp4','.m4v':'video/mp4','.mov':'video/quicktime','.webm':'video/webm'};
 export const videoMime=name=>types[extname(name).toLowerCase()];
 export async function videoRuntime(root){
@@ -35,8 +42,9 @@ export async function readVideo(root,name){
     let width=Number(stream?.width),height=Number(stream?.height),duration=Number(value.format?.duration||stream?.duration);
     const rotation=Number(stream?.side_data_list?.find(item=>item.rotation!==undefined)?.rotation||stream?.tags?.rotate||0);
     if(Math.abs(rotation)%180===90)[width,height]=[height,width];
-    if(!['h264','vp8','vp9','av1'].includes(stream?.codec_name)||!Number.isFinite(duration)||duration<=0||duration>600||!Number.isInteger(width)||!Number.isInteger(height)||width<2||height<2||width*height>8294400)throw new Error('Video cần H.264/VP8/VP9/AV1, tối đa 10 phút và 8,3 megapixel. MP4 H.264 tương thích tốt nhất.');
-    const scale=Math.min(1,1280/width,720/height),renderWidth=Math.max(2,Math.floor(width*scale/2)*2),renderHeight=Math.max(2,Math.floor(height*scale/2)*2);
+    if(!['h264','vp8','vp9','av1'].includes(stream?.codec_name))throw new Error('Video cần codec H.264/VP8/VP9/AV1. MP4 H.264 tương thích tốt nhất.');
+    if(!Number.isFinite(duration)||duration<=0||duration>600)throw new Error('Video cần có thời lượng hợp lệ, tối đa 10 phút.');
+    const {renderWidth,renderHeight}=videoDimensions(width,height);
     const temporary=join(cache,key+'-'+randomUUID()+'.jpg');
     try{
       await exec(runtime.ffmpeg,['-nostdin','-v','error','-threads','2','-protocol_whitelist','file,pipe','-i',file.path,'-map','0:v:0','-frames:v','1','-an','-vf',`scale=${renderWidth}:${renderHeight}`,'-q:v','3','-y',temporary],{windowsHide:true,timeout:30000,maxBuffer:1024*1024});
