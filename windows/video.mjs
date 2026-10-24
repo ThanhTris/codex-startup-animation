@@ -6,10 +6,10 @@ import {join,isAbsolute,extname} from 'node:path';
 import {safeImageName} from './wallpaper.mjs';
 const exec=promisify(execFile);
 export const MAX_VIDEO_BYTES=200*1024*1024;
-export const MAX_VIDEO_PIXELS=7680*4320;
+export const MAX_VIDEO_PIXELS=3840*2160;
 export const MAX_VIDEO_EDGE=8192;
 export function videoDimensions(width,height){
-  if(!Number.isInteger(width)||!Number.isInteger(height)||width<2||height<2||width>MAX_VIDEO_EDGE||height>MAX_VIDEO_EDGE||width*height>MAX_VIDEO_PIXELS)throw new Error(`Video ${width}×${height} vượt giới hạn 8K (33,2 megapixel, mỗi cạnh tối đa 8192 pixel) hoặc kích thước không hợp lệ.`);
+  if(!Number.isInteger(width)||!Number.isInteger(height)||width<2||height<2||width>MAX_VIDEO_EDGE||height>MAX_VIDEO_EDGE||width*height>MAX_VIDEO_PIXELS)throw new Error(`Video ${width}×${height} vượt giới hạn 8,3 megapixel hoặc kích thước không hợp lệ. Hãy dùng bản 1080p/720p để giảm tải.`);
   const scale=Math.min(1,1280/width,720/height);
   return {renderWidth:Math.max(2,Math.floor(width*scale/2)*2),renderHeight:Math.max(2,Math.floor(height*scale/2)*2)};
 }
@@ -34,7 +34,10 @@ export async function readVideo(root,name){
   const key=createHash('sha256').update(file.name+':'+file.revision).digest('hex'),cache=join(root,'video-cache');
   await mkdir(cache,{recursive:true});
   const metadataPath=join(cache,key+'.json');
-  try{const metadata=JSON.parse(await readFile(metadataPath,'utf8'));if(metadata.version===1&&(await lstat(join(cache,key+'.jpg'))).isFile())return {...file,...metadata,poster:`/video-posters/${key}.jpg`};}catch{}
+  let cached;
+  try{const metadata=JSON.parse(await readFile(metadataPath,'utf8'));if(metadata.version===1&&(await lstat(join(cache,key+'.jpg'))).isFile())cached=metadata;}catch{}
+  // Recheck cached dimensions too, including videos imported before a limit change.
+  if(cached)return {...file,...cached,...videoDimensions(cached.width,cached.height),poster:`/video-posters/${key}.jpg`};
   const taskKey=metadataPath;if(pending.has(taskKey))return pending.get(taskKey);
   const task=(async()=>{
     const {stdout}=await exec(runtime.ffprobe,['-v','error','-protocol_whitelist','file,pipe','-select_streams','v:0','-show_streams','-show_format','-of','json',file.path],{windowsHide:true,timeout:15000,maxBuffer:1024*1024});
